@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+# get all [txt, md, markdown, use-configuration] files in [give or current] dir and all its subdirs
+# store file names, relative paths, text contents
+# create UIs to list and preview:
+#     current files
+#     archived files
+#     removed files
+
+# subdirs are ignored when archiving/trashing
+
+# .lil/
+# .lil/archived
+# .lil/removed
+
+import re
+import os
+import sys
+import getopt
+import curses
+
+sys.path = sys.path[1:]
+
+import tix.curses_main
+
+VALID_OPTIONS_SHORT = "r"
+VALID_OPTIONS_LONG = ""
+
+def main(argv=None):
+  opt_recursive = False
+  if argv is None:
+    argv = sys.argv
+
+  if len(argv) > 1:
+    opts, args = getopt.getopt(argv[1:], VALID_OPTIONS_SHORT, VALID_OPTIONS_LONG)
+
+    if len(args) > 0:
+      notes_root = args[0]
+    else:
+      notes_root = '.'
+
+    for opt, arg in opts:
+      if opt in ('-r'):
+        opt_recursive = True
+
+  else:
+    notes_root = os.curdir
+
+  #curses.wrapper(tix.curses_main.CursesRunner.run, notes_root, opt_recursive)
+  tix.curses_main.CursesRunner.run(notes_root, opt_recursive)
+
+if __name__ == "__main__":
+  sys.exit(main())
