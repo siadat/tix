@@ -14,6 +14,7 @@ setup(
     'tix.note',
     'tix.control',
     'tix.curses_view',
+    'tix.gtk_main',
     ],
   scripts=['tix/tix']
 )

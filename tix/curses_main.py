@@ -17,10 +17,8 @@ from note import NoteList
 
 curses_view = CursesView()
 
-class CursesRunner(object):
-
+class CursesMain(object):
   class Loader(threading.Thread):
-
     def __init__(self, outer):
       threading.Thread.__init__(self)
       self.outer = outer
@@ -60,7 +58,7 @@ class CursesRunner(object):
       Control.reload_thread_lock.release()
 
   @classmethod
-  def run(self, notes_root, recursive): #def run(self, stdscr, notes_root, recursive):
+  def main(self, stdscr, notes_root, recursive):
 
     utils.get_user_config()
 
@@ -155,7 +153,6 @@ class CursesRunner(object):
     def keypress_select_next():
       Control.reload_notes = False
       if TixMode.current == TixMode.LIST:
-        curses_view.note_scroll_top = 0
         Control.list_visible_index += 1
         curses_view.adjust_scroll(len(self.stored_items))
       elif TixMode.current == TixMode.TAGS:
@@ -166,7 +163,6 @@ class CursesRunner(object):
     def keypress_select_prev():
       Control.reload_notes = False
       if TixMode.current == TixMode.LIST:
-        curses_view.note_scroll_top = 0
         Control.list_visible_index -= 1
         curses_view.adjust_scroll(len(self.stored_items))
       elif TixMode.current == TixMode.TAGS:
@@ -212,7 +208,6 @@ class CursesRunner(object):
             new_index = i
             break
 
-        curses_view.note_scroll_top = 0
         Control.list_visible_index = new_index
 
     def keypress_shuf_order():
@@ -227,7 +222,6 @@ class CursesRunner(object):
             new_index = i
             break
 
-        curses_view.note_scroll_top = 0
         Control.list_visible_index = new_index
 
     def keypress_insert():
@@ -243,7 +237,6 @@ class CursesRunner(object):
         n = utils.new_note(current_mode)
         curses_view.init_curses()
         if n:
-          curses_view.note_scroll_top = 0
           Control.list_visible_index = 0
           curses_view.adjust_scroll(len(self.stored_items))
           Control.reload_notes = True
@@ -291,14 +284,18 @@ class CursesRunner(object):
         if note_before.text != note_after.text:
           Control.reload_notes = True
           Control.list_visible_index = 0
-          #curses_view.note_scroll_top = 0
         else:
           Control.reload_notes = False
       elif TixMode.current == TixMode.TAGS:
         Control.reload_notes = False
 
-        UserMode.current = Control.tags_visible_index
         TixMode.current = TixMode.LIST
+
+        if UserMode.current == Control.tags_visible_index:
+          return
+        else:
+          UserMode.current = Control.tags_visible_index
+          Control.list_visible_index = 0
 
         list_modes = self.stored_items.modes()
         for note in self.stored_items:
@@ -333,7 +330,11 @@ class CursesRunner(object):
         Control.reload_thread_lock.acquire()
 
         def validator(c):
-          if c == 10:
+          if c == 27:
+            # ctrl A >then> ctrl K
+            # regex = None
+            return 7
+          elif c == 10:
             return 7 # RETURN key -- CTRL-g = 7 and CTRL-j = 10
           else:
             curses_view.search_textbox.do_command(c)
@@ -365,22 +366,23 @@ class CursesRunner(object):
         self.is_searching = True
         regex = curses_view.search_textbox.edit(validator)
         self.is_searching = False
-        regex = regex[len(curses_view.search_prompt):]
-        if regex.strip(): Control.regex_patterns.append(regex)
         try:
           curses.curs_set(0)
         except curses.error: # iphone
           pass
-        Control.list_visible_index = 0
-        curses_view.adjust_scroll(len(self.stored_items))
+        if regex != None:
+          regex = regex[len(curses_view.search_prompt):]
+          if regex.strip(): Control.regex_patterns.append(regex)
+          Control.list_visible_index = 0
+          curses_view.adjust_scroll(len(self.stored_items))
 
-        list_modes = self.stored_items.modes()
-        current_mode = list_modes[UserMode.current]
-        for note in self.stored_items:
-          if (current_mode == UserMode.ALL or current_mode in note.modes) and note.is_search_match(regex):
-            note.visible(True)
-          else:
-            note.visible(False)
+          list_modes = self.stored_items.modes()
+          current_mode = list_modes[UserMode.current]
+          for note in self.stored_items:
+            if (current_mode == UserMode.ALL or current_mode in note.modes) and note.is_search_match(regex):
+              note.visible(True)
+            else:
+              note.visible(False)
 
         Control.reload_thread_lock.release()
 

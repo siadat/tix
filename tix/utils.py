@@ -69,12 +69,23 @@ def read_notes(path, filenames, firstline_only=False):
 def open_file_in_editor(file_name):
   """ start editor with file_name """
   global user_configurations
-  subprocess.call(['%s "%s"' % (user_configurations['EDITOR'], file_name)], shell=True)
+  alternative_editors = ['gedit', 'leafpad', 'notepad', 'nano', '']
+  command = user_configurations['EDITOR'].replace('%f', '"%s"' % file_name)
+  try:
+    #subprocess.call(['%s "%s"' % (user_configurations['EDITOR'], file_name)], shell=True)
+    subprocess.call([command], shell=True)
+  except OSError:
+    pass
 
 def open_file_in_reader(file_name):
   """ start reader with file_name """
   global user_configurations
-  subprocess.call(['%s "%s"' % (user_configurations['READER'], file_name)], shell=True)
+  #subprocess.call(['%s "%s"' % (user_configurations['READER'], file_name)], shell=True)
+  command = user_configurations['READER'].replace('%f', '"%s"' % file_name)
+  try:
+    subprocess.call([command], shell=True)
+  except OSError:
+    pass
 
 def edit_note(note):
   fullpath = os.path.join(note.path, note.filename)
@@ -191,8 +202,8 @@ def get_user_config():
 
     print('Edit "%s" to change your default editor' % config_path)
     config_parser.add_section('general')
-    config_parser.set('general', 'editor',   user_configurations['EDITOR'])
-    config_parser.set('general', 'reader',   user_configurations['READER'])
+    config_parser.set('general', 'editor %f',   user_configurations['EDITOR'])
+    config_parser.set('general', 'reader %f',   user_configurations['READER'])
     config_parser.set('general', 'tixpath',  user_configurations['TIXPATH'])
     config_parser.set('general', 'notepath', ','.join(user_configurations['NOTEPATH']))
     with open(config_path, 'wb') as f:

@@ -20,13 +20,13 @@ import curses
 
 sys.path = sys.path[1:]
 
-import tix.curses_main
 
-VALID_OPTIONS_SHORT = "r"
+VALID_OPTIONS_SHORT = "rg"
 VALID_OPTIONS_LONG = ""
 
 def main(argv=None):
   opt_recursive = False
+  opt_gui_enabled = False
   if argv is None:
     argv = sys.argv
 
@@ -41,12 +41,19 @@ def main(argv=None):
     for opt, arg in opts:
       if opt in ('-r'):
         opt_recursive = True
+      elif opt in ('-g'):
+        opt_gui_enabled = True
 
   else:
     notes_root = os.curdir
 
-  #curses.wrapper(tix.curses_main.CursesRunner.run, notes_root, opt_recursive)
-  tix.curses_main.CursesRunner.run(notes_root, opt_recursive)
+  if opt_gui_enabled:
+    import tix.gtk_main
+    gtk_app = tix.gtk_main.GtkMain()
+    gtk_app.main(notes_root, opt_recursive)
+  else:
+    import tix.curses_main
+    curses.wrapper(tix.curses_main.CursesMain.main, notes_root, opt_recursive)
 
 if __name__ == "__main__":
   sys.exit(main())

@@ -5,9 +5,7 @@ import locale
 locale.setlocale(locale.LC_ALL, '')
 code = locale.getpreferredencoding()
 
-
 class TextWithFormat(object):
-
   def __init__(self, str, flags, color_pair=0):
     self.str = str
     self.flags = flags
@@ -21,7 +19,6 @@ class TextWithFormat(object):
     CursesView.add_str(win, self.str, self.flags | c, max_width)
 
 class CursesView(object):
-
   def __init__(self):
     self.MAX_NLINE = 100
     self.LIST_ITEM_MAX_HEIGHT = 2
@@ -59,6 +56,7 @@ class CursesView(object):
       curses.init_pair(3, curses.COLOR_YELLOW, -1)
       curses.init_pair(4, curses.COLOR_RED, -1)
       curses.init_pair(5, curses.COLOR_BLUE, -1)
+      curses.init_pair(6, curses.COLOR_CYAN, -1)
 
     self.COLOR_DEFAULT = 0
     self.COLOR_WHITE_ON_BLUE = 1
@@ -66,6 +64,7 @@ class CursesView(object):
     self.COLOR_YELLOW = 3
     self.COLOR_RED = 4
     self.COLOR_BLUE = 5
+    self.COLOR_CYAN = 6
 
     self.WELCOME = """
 TIX - text file manager
@@ -143,22 +142,7 @@ Quick start:
   def get_list_capacity(self):
     return self.screen_yx[0] / self.list_item_height - (self.margin_top + self.margin_bottom)
 
-  def draw_ruler(self):
-    if curses.has_colors():
-      curses.init_pair(1, curses.COLOR_YELLOW, curses.COLOR_WHITE)
-    for i in range(0, self.screen_yx[0]):
-      self.add_ch(self.screen, '~',# curses.ACS_BULLET, # curses.ACS_VLINE,
-          (i, self.margin_left + self.list_width),
-          curses.A_DIM)
-
-      #CursesView.add_ch(self.screen, ' ',
-      #    (i, self.margin_left + self.list_width + self.note_width + 3),
-      #    curses.A_DIM | curses.A_REVERSE)
-
   def adjust_scroll(self, nbr_items):
-    #if self.note_scroll_top < 0:
-    #  self.note_scroll_top = 0
-
     from control import TixMode, Control
 
     if TixMode.current == TixMode.LIST:
@@ -222,7 +206,6 @@ Quick start:
       raise TypeError, stored_items
 
     self.screen.clear()
-    #self.draw_ruler() # (#no-note)
 
     self.draw_footer(stored_items)
 
@@ -248,7 +231,8 @@ Quick start:
         all_modes = notes_list.modes()
         showing_user_mode = all_modes[UserMode.current]
 
-        text = 'Viewing %s "%s" [%s-mode] ' % (showing_user_mode, viewing_filename, TixMode.OPTIONS[TixMode.current]) # " ".join(current_note.modes),
+        text = 'Viewing %s "%s" [%s-mode] ' % \
+          (showing_user_mode, viewing_filename, TixMode.OPTIONS[TixMode.current])
       else:
         text = 'No file [%s-mode]' % TixMode.OPTIONS[TixMode.current]
     elif TixMode.current == TixMode.TAGS:
@@ -286,13 +270,16 @@ Quick start:
 
       flags = 0
 
-      if i == Control.tags_visible_index:
-        flags |= curses.A_REVERSE
 
       list_item_texts = []
       item_line = mode
 
-      list_item_texts.append(TextWithFormat(item_line, flags, self.COLOR_DEFAULT))
+      if i == Control.tags_visible_index:
+        flags |= curses.A_REVERSE
+        list_item_texts.append(TextWithFormat(item_line, flags, self.COLOR_DEFAULT))
+      else:
+        list_item_texts.append(TextWithFormat(item_line, flags, self.COLOR_CYAN))
+
       for t in list_item_texts:
         t.write(pad_item, self.list_width)
         pad_item.addch(' ')
@@ -330,9 +317,6 @@ Quick start:
 
       flags = 0
 
-      #if stored_item.is_todo:
-      #  flags |= curses.A_BOLD
-
       if i == Control.list_visible_index:
         if TixMode.current == TixMode.LIST:
           flags |= curses.A_REVERSE
@@ -349,17 +333,17 @@ Quick start:
         list_item_texts.append(TextWithFormat(item_line, flags, self.COLOR_DEFAULT))
       elif Control.list_view_mode == Control.LIST_VIEW_FIRSTLINE:
         first_line = stored_item.first_line
-        modes = " ".join(stored_item.modes)
+        #modes = " ".join(stored_item.modes)
+        modes = " ".join([m for m in stored_item.modes if m != all_modes[UserMode.current]])
 
         if modes.strip():
           if len(modes) > self.list_width/3:
             modes = modes[:self.list_width/3-3] + "..."
 
           if stored_item.is_todo:
-            #list_item_texts.append(TextWithFormat(modes, flags | curses.A_BOLD, self.COLOR_RED))
-            list_item_texts.append(TextWithFormat(modes, flags, self.COLOR_YELLOW))
+            list_item_texts.append(TextWithFormat(modes, flags, self.COLOR_CYAN))
           else:
-            list_item_texts.append(TextWithFormat(modes, flags, self.COLOR_YELLOW))
+            list_item_texts.append(TextWithFormat(modes, flags, self.COLOR_CYAN))
         else:
           modes = ""
 
@@ -388,24 +372,5 @@ Quick start:
 
   def draw_stored_items(self, stored_items):
     from control import Control
-
-    if len(stored_items) == 0:
-      pass # (#no-note)
-      #self.add_str(self.current_note_pad, self.WELCOME)
-    else:
+    if len(stored_items) > 0:
       self.draw_stored_list(stored_items)
-      #item = stored_items.get_visible(Control.list_visible_index)
-      #self.draw_note(item) # (#no-note)
-
-    return # no-not
-
-    #try:
-    #  self.current_note_pad.overwrite(self.screen,
-    #      0,
-    #      0,
-    #      self.margin_top,
-    #      self.margin_left + self.list_width + 2,
-    #      self.screen_yx[0] - self.margin_top - self.margin_bottom - 1,
-    #      self.margin_left + self.list_width + self.note_width + 1)
-    #except Exception as e:
-    #  raise e

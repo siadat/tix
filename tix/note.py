@@ -54,8 +54,6 @@ class NoteList(collections.MutableSequence):
     self.list = list()
     self.oktype = Note
     self._modes_set = set([UserMode.ALL])
-    #self.current_index = 0
-    #self.current = 0
 
   def reset(self):
     del self.list[:]
@@ -93,13 +91,11 @@ class NoteList(collections.MutableSequence):
     for v in values:
       self.list.append(v)
       self._modes_set = self._modes_set.union(v.modes)
-    #self.current += len(values)
 
   def insert(self, i, v):
     self.check(v)
     self._modes_set = self._modes_set.union(v.modes)
     self.list.insert(i, v)
-    #self.current += 1
 
   def modes(self):
     def comp(a, b):
