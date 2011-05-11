@@ -233,7 +233,6 @@ class CursesRunner(object):
     def keypress_insert():
       Control.reload_notes = False
       if TixMode.current == TixMode.LIST:
-        #curses.endwin()
         curses_view.end_curses()
         list_modes = self.stored_items.modes()
         current_mode = list_modes[UserMode.current]
@@ -278,15 +277,13 @@ class CursesRunner(object):
     def keypress_read():
       Control.reload_notes = False
       if TixMode.current == TixMode.LIST:
-        #curses.endwin()
         curses_view.end_curses()
         filename = self.stored_items.get_visible(Control.list_visible_index).fullpath()
         utils.open_file_in_reader(filename)
         curses_view.init_curses()
 
     def keypress_enter():
-      #curses.endwin()
-      if TixMode.current == TixMode.LIST:
+      if TixMode.current == TixMode.LIST and len(self.stored_items) > 0:
         curses_view.end_curses()
         note_before = self.stored_items.get_visible(Control.list_visible_index)
         note_after = utils.edit_note(note_before)
@@ -358,7 +355,10 @@ class CursesRunner(object):
               return 7
 
         regex = ""
-        curses.curs_set(1)
+        try:
+          curses.curs_set(1)
+        except curses.error: # iphone
+          pass
         Control.current_regex_index = len(Control.regex_patterns)
         curses_view.footer_pad.clear()
         CursesView.add_str(curses_view.footer_pad, curses_view.search_prompt)
@@ -367,7 +367,10 @@ class CursesRunner(object):
         self.is_searching = False
         regex = regex[len(curses_view.search_prompt):]
         if regex.strip(): Control.regex_patterns.append(regex)
-        curses.curs_set(0)
+        try:
+          curses.curs_set(0)
+        except curses.error: # iphone
+          pass
         Control.list_visible_index = 0
         curses_view.adjust_scroll(len(self.stored_items))
 

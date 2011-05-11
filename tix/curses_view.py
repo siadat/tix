@@ -14,7 +14,11 @@ class TextWithFormat(object):
     self.color_pair = color_pair
 
   def write(self, win, max_width):
-    CursesView.add_str(win, self.str, self.flags | curses.color_pair(self.color_pair), max_width)
+    if curses.has_colors():
+      c = curses.color_pair(self.color_pair)
+    else:
+      c = 0
+    CursesView.add_str(win, self.str, self.flags | c, max_width)
 
 class CursesView(object):
 
@@ -47,11 +51,14 @@ class CursesView(object):
     self.search_textbox = None
     self.current_note_pad = None
 
-    curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
-    curses.init_pair(2, curses.COLOR_RED, curses.COLOR_WHITE)
-    curses.init_pair(3, curses.COLOR_YELLOW, -1)
-    curses.init_pair(4, curses.COLOR_RED, -1)
-    curses.init_pair(5, curses.COLOR_BLUE, -1)
+
+    if curses.has_colors():
+      curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
+      curses.init_pair(2, curses.COLOR_RED, curses.COLOR_WHITE)
+      curses.init_pair(3, curses.COLOR_YELLOW, -1)
+      curses.init_pair(4, curses.COLOR_RED, -1)
+      curses.init_pair(5, curses.COLOR_BLUE, -1)
+
     self.COLOR_DEFAULT = 0
     self.COLOR_WHITE_ON_BLUE = 1
     self.COLOR_RED_ON_WHITE = 2
@@ -112,9 +119,16 @@ Quick start:
   def init_curses(self):
     curses.noecho()
     curses.cbreak()
-    curses.curs_set(False)
-    curses.start_color()
-    curses.use_default_colors()
+
+    try:
+      curses.curs_set(0)
+    except curses.error: # iphone
+      pass
+
+    if curses.has_colors():
+      curses.start_color()
+      curses.use_default_colors()
+
     self.screen.keypad(1)
     self.screen.idlok(True)
     self.screen.scrollok(True)
@@ -129,7 +143,8 @@ Quick start:
     return self.screen_yx[0] / self.list_item_height - (self.margin_top + self.margin_bottom)
 
   def draw_ruler(self):
-    curses.init_pair(1, curses.COLOR_YELLOW, curses.COLOR_WHITE)
+    if curses.has_colors():
+      curses.init_pair(1, curses.COLOR_YELLOW, curses.COLOR_WHITE)
     for i in range(0, self.screen_yx[0]):
       self.add_ch(self.screen, '~',# curses.ACS_BULLET, # curses.ACS_VLINE,
           (i, self.margin_left + self.list_width),
