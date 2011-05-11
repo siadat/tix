@@ -422,7 +422,6 @@ class CursesRunner(object):
       curses_view.update_screen_size()
       curses_view.recalculate_widths()
       curses_view.create_footer_pad()
-      #curses_view.create_note_pad() # (#no-note)
 
       if Control.reload_notes:
         if not Control.reload_thread_lock.locked():
@@ -432,14 +431,7 @@ class CursesRunner(object):
         curses_view.complete_redraw(self.stored_items)
 
       Control.reload_notes = False
-
-      if len(self.stored_items) == 0:
-        # TODO this is temporary workround, problem = first arrow key hit does nothing
-        c = curses_view.keyboard_pad.getch()
-      else:
-        c = curses_view.screen.getch()
-
-      #utils.log(c)
+      c = curses_view.keyboard_pad.getch()
 
       if c == ord('q'): break
       f = key_to_action.get(c)

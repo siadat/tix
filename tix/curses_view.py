@@ -46,6 +46,7 @@ class CursesView(object):
     self.update_screen_size()
     self.init_curses()
     self.keyboard_pad = curses.newpad(1,1)
+    self.keyboard_pad.keypad(1)
 
     self.footer_pad = None
     self.search_textbox = None
