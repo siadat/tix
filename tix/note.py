@@ -19,6 +19,7 @@ class Note(object):
 
     #self.modes = set()
     self.modes = utils.get_all_tags(self.text)
+    self.is_processed = False
 
   def fullpath(self):
     return os.path.join(self.path, self.filename)
@@ -27,7 +28,7 @@ class Note(object):
     try:
       if regex.strip() is '': return True
       regex = regex.replace('#', '\\#')
-      return re.search(regex, self.path + self.filename + self.text,
+      return re.search(regex, self.text, # self.path + self.filename + self.text,
           re.MULTILINE | re.DOTALL | re.VERBOSE | flags)
     except re.error:
       return True
@@ -37,6 +38,7 @@ class Note(object):
     self.is_todo = self.is_a_match(r'\b(TODO|DEADLINE)\b[^\'"`]')
     self.is_someday = self.is_a_match(r'\b(SOMEDAY)\b[^\'"`]')
     self.first_line = utils.get_first_line(self.text)
+    self.is_processed = True
     #self.nbr_of_lines = utils.get_number_of_lines(self.text, 80)
 
   def is_search_match(self, regex):
@@ -53,7 +55,7 @@ class NoteList(collections.MutableSequence):
     self.oktype = Note
     self._modes_set = set([UserMode.ALL])
     #self.current_index = 0
-    #self.current_user_mode = 0
+    #self.current = 0
 
   def reset(self):
     del self.list[:]
@@ -61,6 +63,11 @@ class NoteList(collections.MutableSequence):
   def check(self, v):
     if not isinstance(v, self.oktype):
       raise TypeError, v
+
+  def group_todo(self):
+    todo_list = [n for n in self.list if n.is_todo]
+    self.list = [n for n in self.list if not n.is_todo]
+    self.list = todo_list + self.list
 
   def sort_by_modification_date(self):
     self.list = sorted(self.list,
@@ -86,13 +93,13 @@ class NoteList(collections.MutableSequence):
     for v in values:
       self.list.append(v)
       self._modes_set = self._modes_set.union(v.modes)
-    #self.current_user_mode += len(values)
+    #self.current += len(values)
 
   def insert(self, i, v):
     self.check(v)
     self._modes_set = self._modes_set.union(v.modes)
     self.list.insert(i, v)
-    #self.current_user_mode += 1
+    #self.current += 1
 
   def modes(self):
     def comp(a, b):

@@ -1,7 +1,6 @@
 from collections import namedtuple
 import os
 import re
-import time
 import tempfile
 import datetime
 import textwrap
@@ -10,10 +9,12 @@ import ConfigParser
 import shutil
 from note import Note, NoteList
 
+TAG_REGEX = r'#[^\s:;#=\(\)\"]{1,50}'
+
 HOME_DIR = os.getenv('USERPROFILE') or os.getenv('HOME')
 
 DEFAULT_USER_CONFIGURATIONS = {
-  'EDITOR': 'vim',
+  'EDITOR': 'vi',
   'READER': 'less',
   'TIXPATH': os.path.join(HOME_DIR, 'tix'),
   'NOTEPATH': [os.path.join(HOME_DIR, 'tix')],
@@ -78,25 +79,41 @@ def open_file_in_reader(file_name):
 def edit_note(note):
   fullpath = os.path.join(note.path, note.filename)
 
+  #text_before_edit = note.text
   open_file_in_editor(fullpath)
   with open(fullpath, 'r') as f:
     note_content = f.read()
-    if note_content.strip() == "":
-      return None
-
+    #if note_content == text_before_edit:
+    #  return None
     n = Note(note.filename, note.path, note_content)
     return n
+  return None
 
 #def archive_note(filename):
 #  directory = os.path.join(user_configurations['TIXPATH'], 'archive')
 
-def new_note():
+def new_note(initial_text=None):
   directory = user_configurations['TIXPATH']
-  new_filename = "tix-%s.txt" % str(int(time.time()))
+  
+  now = datetime.datetime.now()
+  t = now.strftime("%Y-%m-%d-%H-%M-%S")
+
+  import time
+
+  epoch_seconds = time.time()
+  #secs_whole = int(epoch_seconds)
+  #secs_fraction = int((epoch_seconds - secs_whole) * 100)
+  #timestamp = "%s--%s.%s" % (t, secs_whole, secs_fraction)
+  timestamp = "%s-%s" % (epoch_seconds, t)
+
+  new_filename = "tix-%s.txt" % timestamp
   new_filepath = os.path.join(directory, new_filename)
 
   #if not os.path.exists(directory):
   #  os.mkdir(directory)
+  if initial_text:
+    with open(new_filepath, 'w') as f:
+      f.write(initial_text)
   open_file_in_editor(new_filepath)
   #os.rmdir(directory)
   if not os.path.exists(new_filepath):
@@ -116,7 +133,7 @@ def get_modification_date(file_path):
   return file_datetime
 
 def get_all_tags(txt):
-  return set([m.lower() for m in re.findall(r'#[^\s:;#\(\)\"]{1,50}', txt, re.LOCALE)])
+  return set([m.lower() for m in re.findall(TAG_REGEX, txt, re.LOCALE)])
   #return set(re.findall(r'#[\w-\']+', txt, re.LOCALE))
 
 def log(message):
@@ -190,6 +207,7 @@ def is_binary(string):
 def get_first_line(string):
   lines = list()
   for s in string.splitlines():
+    s = re.sub(TAG_REGEX, '', s).strip()
     if s:
       lines.append(s)
       if len(lines) > 1: break
