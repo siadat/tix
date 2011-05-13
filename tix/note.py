@@ -39,6 +39,7 @@ class Note(object):
     self.is_someday = self.is_a_match(r'\b(SOMEDAY)\b[^\'"`]')
     self.first_line = utils.get_first_line(self.text)
     self.is_processed = True
+    self.text = " ".join(set([w.lower() for w in self.text.replace(r'\n',' ').split(' ')])) # self.text[:200] # FIXME
     #self.nbr_of_lines = utils.get_number_of_lines(self.text, 80)
 
   def is_search_match(self, regex):
@@ -47,13 +48,19 @@ class Note(object):
   def visible(self, visibility):
     self.is_shown = visibility
 
+  def load_text(self):
+    with open(self.fullpath(), 'r') as f:
+      return f.read()
+
+
+
 
 class NoteList(collections.MutableSequence):
   """Holds all loaded notes."""
   def __init__(self):
     self.list = list()
     self.oktype = Note
-    self._modes_set = set([UserMode.ALL])
+    self._modes_set = set([UserMode.ALL, UserMode.NOTAG])
 
   def reset(self):
     del self.list[:]
@@ -99,8 +106,8 @@ class NoteList(collections.MutableSequence):
 
   def modes(self):
     def comp(a, b):
-      v1 = a.lower().replace('#', 'z')
-      v2 = b.lower().replace('#', 'z')
+      v1 = a.lower().replace(utils.TAG_STARTS_WITH, 'z')
+      v2 = b.lower().replace(utils.TAG_STARTS_WITH, 'z')
       return cmp(v1, v2)
     return sorted(list(self._modes_set), cmp=comp)
 

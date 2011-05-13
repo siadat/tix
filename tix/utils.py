@@ -9,7 +9,12 @@ import ConfigParser
 import shutil
 from note import Note, NoteList
 
+# TODO either decide which, or make it an option, in which case there should be
+# a convinient way of converting them
+TAG_STARTS_WITH = r'#'
 TAG_REGEX = r'#[^\s:;#=\(\)\"]{1,50}'
+#TAG_STARTS_WITH = r'@'
+#TAG_REGEX = r'@[^\s:;@=\(\)\"]{1,50}'
 
 HOME_DIR = os.getenv('USERPROFILE') or os.getenv('HOME')
 
@@ -69,18 +74,23 @@ def read_notes(path, filenames, firstline_only=False):
 def open_file_in_editor(file_name):
   """ start editor with file_name """
   global user_configurations
-  alternative_editors = ['gedit', 'leafpad', 'notepad', 'nano', '']
-  command = user_configurations['EDITOR'].replace('%f', '"%s"' % file_name)
-  try:
-    #subprocess.call(['%s "%s"' % (user_configurations['EDITOR'], file_name)], shell=True)
-    subprocess.call([command], shell=True)
-  except OSError:
-    pass
+  if True:
+    #alternative_editors = ['gedit', 'leafpad', 'notepad', 'nano', ]
+    command = user_configurations['EDITOR'].replace('%f', '"%s"' % file_name)
+    try:
+      subprocess.call([command], shell=True)
+    except OSError:
+      pass
+  else:
+    fulltext = ""
+    with open(file_name, 'r') as f:
+      fulltext = f.read()
+    #gui = GtkMain()
+    #gui.show_text_editor(fulltext)
 
 def open_file_in_reader(file_name):
   """ start reader with file_name """
   global user_configurations
-  #subprocess.call(['%s "%s"' % (user_configurations['READER'], file_name)], shell=True)
   command = user_configurations['READER'].replace('%f', '"%s"' % file_name)
   try:
     subprocess.call([command], shell=True)
@@ -90,14 +100,10 @@ def open_file_in_reader(file_name):
 def edit_note(note):
   fullpath = os.path.join(note.path, note.filename)
 
-  #text_before_edit = note.text
   open_file_in_editor(fullpath)
   with open(fullpath, 'r') as f:
     note_content = f.read()
-    #if note_content == text_before_edit:
-    #  return None
-    n = Note(note.filename, note.path, note_content)
-    return n
+    return Note(note.filename, note.path, note_content)
   return None
 
 #def archive_note(filename):

@@ -320,7 +320,7 @@ Quick start:
       if i == Control.list_visible_index:
         if TixMode.current == TixMode.LIST:
           flags |= curses.A_REVERSE
-        else:
+        elif TixMode.current == TixMode.TAGS:
           flags |= curses.A_UNDERLINE
 
         if stored_item.is_todo:

@@ -15,6 +15,13 @@ setup(
     'tix.control',
     'tix.curses_view',
     'tix.gtk_main',
-    ],
-  scripts=['tix/tix']
+    'tix.gtk_undobuffer',
+    'tix.gtk_classes',
+  ],
+  scripts=['tix/tix'],
+  requires=['gtk', 'curses'],
+  description='TIX text file manager',
+  author='Sina Siadatnejad',
+  author_email='siadat@gmail.com',
+  license='MIT',
 )

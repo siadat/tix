@@ -35,12 +35,14 @@ class SortMode(object):
 
 class TixMode(object):
   current = 0
-  LIST, TAGS = range(2)
+  LIST, TAGS, EDIT = range(3)
   OPTIONS = {
       LIST: 'list',
       TAGS: 'tags',
+      EDIT: 'edit',
       }
 
 class UserMode(object):
   current = 0
   ALL = 'ALL'
+  NOTAG = 'NOTAG'

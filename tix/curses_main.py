@@ -42,8 +42,11 @@ class CursesMain(object):
       for i, note in enumerate(self.outer.stored_items):
         note.process_meta(i)
 
-        if (current_mode == UserMode.ALL or current_mode in note.modes) and note.is_search_match(Control.get_last_regex()):
-          note.visible(True)
+        if note.is_search_match(Control.get_last_regex()):
+          if (current_mode == UserMode.ALL or current_mode in note.modes):
+            note.visible(True)
+          elif (current_mode == UserMode.NOTAG and not note.modes):
+            note.visible(True)
           #if note.id == before_id:
           #  Control.list_visible_index = visible_counter
           #visible_counter += 1
@@ -201,6 +204,7 @@ class CursesMain(object):
           self.stored_items.group_todo()
         elif SortMode.current == SortMode.BY_FILENAME:
           self.stored_items.sort_by_filename()
+          #self.stored_items.group_todo()
 
         new_index = 0
         for i, item in enumerate(self.stored_items):
@@ -216,6 +220,7 @@ class CursesMain(object):
         SortMode.current = SortMode.BY_SHUF
         item_id = self.stored_items.get_visible(Control.list_visible_index).id
         random.shuffle(self.stored_items)
+        self.stored_items.group_todo()
         new_index = 0
         for i, item in enumerate(self.stored_items):
           if item.id == item_id:
@@ -230,7 +235,7 @@ class CursesMain(object):
         curses_view.end_curses()
         list_modes = self.stored_items.modes()
         current_mode = list_modes[UserMode.current]
-        if current_mode == UserMode.ALL:
+        if not current_mode in (UserMode.ALL, UserMode.NOTAG):
           current_mode = None
         else:
           current_mode = current_mode + "\n\n"
@@ -263,6 +268,8 @@ class CursesMain(object):
         
         for note in self.stored_items:
           if list_modes[UserMode.current] == UserMode.ALL or list_modes[UserMode.current] in note.modes:
+            note.visible(True)
+          elif list_modes[UserMode.current] == UserMode.NOTAG and not note.modes:
             note.visible(True)
           else:
             note.visible(False)
@@ -301,6 +308,8 @@ class CursesMain(object):
         for note in self.stored_items:
           if list_modes[UserMode.current] == UserMode.ALL or list_modes[UserMode.current] in note.modes:
             note.visible(True)
+          elif list_modes[UserMode.current] == UserMode.NOTAG and not note.modes:
+            note.visible(True)
           else:
             note.visible(False)
 
@@ -314,7 +323,9 @@ class CursesMain(object):
       reverse = False
       addition = 1 if not reverse else -1
       TixMode.current = (TixMode.current + addition) % nbr_modes
-      
+
+      if TixMode.current == TixMode.EDIT:
+        TixMode.current = (TixMode.current + addition) % nbr_modes
 
     def keypress_switch_to_list_mode():
       Control.reload_notes = False
@@ -379,8 +390,13 @@ class CursesMain(object):
           list_modes = self.stored_items.modes()
           current_mode = list_modes[UserMode.current]
           for note in self.stored_items:
-            if (current_mode == UserMode.ALL or current_mode in note.modes) and note.is_search_match(regex):
-              note.visible(True)
+
+
+            if note.is_search_match(regex):
+              if (current_mode == UserMode.ALL or current_mode in note.modes):
+                note.visible(True)
+              elif (current_mode == UserMode.NOTAG and not note.modes):
+                note.visible(True)
             else:
               note.visible(False)
 
@@ -402,6 +418,8 @@ class CursesMain(object):
       ord('p'): keypress_cycle_modes_reverse,
       ord('\t'): keypress_cycle_tix_modes,
       9: keypress_cycle_tix_modes, # = TAB
+      ord('#'): keypress_cycle_tix_modes,
+      ord('@'): keypress_cycle_tix_modes,
       #353: keypress_cycle_modes_reverse, # = SHIFT + TAB
       ord('f'): keypress_toggle_filename_view,
       ord('s'): keypress_change_sorting_order,
