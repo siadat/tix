@@ -8,16 +8,17 @@ class List(gtk.TreeView):
     note_items_model = gtk.ListStore(*types)
     all_modes = stored_items.modes()
     for i, item in enumerate(stored_items):
-      modes = " ".join([m for m in item.modes if m != all_modes[UserMode.current]])
+      modes = " ".join(["<span background='#eee' color='#000'> %s </span>" % m.upper() for m in item.modes if m != all_modes[UserMode.current]])
       first_line = item.first_line
       #bg_color = None # '#ddd' if item.is_todo else None
       if not modes: modes = "<span color='#999'>None</span>"
       if not first_line: first_line = "<span color='#999'>Empty</span>"
 
+      todo_marker = '<span size="smaller" color="#579" weight="bold" background="#d0ddef"> TODO </span> ' #8a5
       if item.is_todo:
         note_items_model.append((
-          '<span size="smaller" color="#579" weight="bold" background="#d0ddef"> TODO </span> %s' % modes, #8a5
-          '%s' % first_line,
+          '%s%s' % (todo_marker, modes),
+          '%s%s' % ('', first_line),
         ))
       else:
         note_items_model.append((
@@ -28,7 +29,7 @@ class List(gtk.TreeView):
     gtk.TreeView.__init__(self, note_items_model)
     
     self.set_cursor(0)
-    self.set_rules_hint(True)
+    self.set_rules_hint(False)
     self.set_enable_search(False)
     self.set_headers_clickable(False)
     self.set_headers_visible(True)

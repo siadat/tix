@@ -47,6 +47,8 @@ def main(argv=None):
   else:
     notes_root = os.curdir
 
+  import tix.utils
+  root_dir = os.path.join(tix.utils.HOME_DIR, 'tix')
   if opt_gui_enabled:
     import tix.gtk_main
     gtk_app = tix.gtk_main.GtkMain()
