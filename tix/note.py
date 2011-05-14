@@ -48,12 +48,14 @@ class Note(object):
   def visible(self, visibility):
     self.is_shown = visibility
 
-  def load_text(self):
+  def load_fulltext_from_file(self):
     with open(self.fullpath(), 'r') as f:
-      return f.read()
+      return unicode(f.read())
 
-
-
+  def write_text_to_file(self, new_text):
+    if not new_text: return
+    with open(self.fullpath(), 'w') as f:
+      f.write(new_text)
 
 class NoteList(collections.MutableSequence):
   """Holds all loaded notes."""
@@ -61,6 +63,49 @@ class NoteList(collections.MutableSequence):
     self.list = list()
     self.oktype = Note
     self._modes_set = set([UserMode.ALL, UserMode.NOTAG])
+
+  def load(self, root_dir, recursive):
+
+    from control import Control
+
+    if not os.path.exists(root_dir) or not os.path.isdir(root_dir):
+      return
+
+    self.reset()
+
+    # look at current dir if config's path is empty:
+    if not utils.user_configurations['NOTEPATH']:
+      utils.user_configurations['NOTEPATH'].add(root_dir)
+
+    if recursive:
+      for dir_path in utils.user_configurations['NOTEPATH']:
+        if not os.path.exists(dir_path):
+          continue
+        for file_path, dirs, files in os.walk(dir_path):
+          if '.git' in file_path.split(os.sep):
+            continue
+          self.list += utils.read_notes(file_path, files)
+          continue
+    else:
+      for file_path in utils.user_configurations['NOTEPATH']:
+        if not os.path.exists(file_path):
+          continue
+        files = os.listdir(file_path)
+        self.list += utils.read_notes(file_path, files)
+    self.sort_by_modification_date()
+    
+    list_modes = self.modes()
+    current_mode = list_modes[UserMode.current]
+    for i, note in enumerate(self.list):
+      note.process_meta(i)
+      note.visible(True)
+      if (current_mode == UserMode.ALL or current_mode in note.modes) \
+      and note.is_search_match(Control.get_last_regex()):
+        note.visible(True)
+      else:
+        note.visible(False)
+
+    self.group_todo()
 
   def reset(self):
     del self.list[:]

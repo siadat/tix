@@ -27,7 +27,7 @@ DEFAULT_USER_CONFIGURATIONS = {
 
 user_configurations = DEFAULT_USER_CONFIGURATIONS
 
-def load(root_dir, recursive):
+def load(root_dir, recursive): # FIXME moved to NoteList, gtk not calling this, just need to fix curses ui
   if not os.path.exists(root_dir) or not os.path.isdir(root_dir):
     return NoteList()
 

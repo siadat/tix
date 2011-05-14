@@ -6,24 +6,37 @@ import sys
 import utils
 from note import Note, NoteList
 from gtk_classes import List, Editor
-from gtk_undobuffer import UndoableBuffer
 from control import Control, UserMode, TixMode
 
 class GtkMain:
 
   def create_editor(self):
     self.editor = Editor()
-    self.editor.connect('key-press-event', self.keypress_reaction)
+    self.editor.connect('key-press-event', self.keypress_reaction_editor)
+
+    self.editor.set_pixels_above_lines(2)
+    self.editor.set_pixels_inside_wrap(0)
+    self.editor.set_right_margin(2)
+    self.editor.set_left_margin(2)
+
+    self.editor.set_border_width(10)
+    f = 64 * 1024 - 1
+    color = (f,) * 3
+    self.editor.modify_bg(0, gtk.gdk.Color(*color))
+    #color = map(lambda x: int(x), (f, f * 0.9, f * 0.5))
+    #self.editor.modify_base(0, gtk.gdk.Color(10000,12000,0))
+    #self.editor.modify_text(0, gtk.gdk.Color(*color))
 
   def create_list(self):
     self.tree_view = List(self.stored_items)
     self.tree_view.connect('row-activated', self.event_switch_to_edit_view)
-    self.tree_view.connect('key-press-event', self.keypress_reaction)
+    self.tree_view.connect('key-press-event', self.keypress_reaction_list)
 
   def create_statusbar(self):
     self.status_bar = gtk.Statusbar()
     self.statusbar_context = self.status_bar.get_context_id("the status bar")
     self.status_bar.push(self.statusbar_context, "TIX")
+    self.status_bar.set_has_resize_grip(False)
     self.vbox.pack_end(self.status_bar, False, False, 0)
     self.status_bar.show()
 
@@ -112,28 +125,31 @@ class GtkMain:
       self.event_switch_to_list_view(None, None)
 
   def event_switch_to_edit_view(self, widget, event, data=None):
-    self.status_bar.push(self.statusbar_context, "MODE: EDIT")
     TixMode.current = TixMode.EDIT
 
     path, col = self.tree_view.get_cursor()
     current_visible_index = path[0]
-    buff = UndoableBuffer()
-    buff.set_text(self.stored_items[current_visible_index].load_text())
-    self.editor.set_buffer(buff)
+
+    self.editor.load_note(self.stored_items[current_visible_index])
+    self.status_bar.push(self.statusbar_context, 'MODE: EDIT "%s"' % self.stored_items[current_visible_index].fullpath())
 
     self.vbox.remove(self.tree_view.get_parent())
     self.vbox.add(self.editor.get_parent())
     self.editor.grab_focus()
     self.main_window.show_all()
-    
 
   def event_switch_to_list_view(self, widget, event, data=None):
-    self.status_bar.push(self.statusbar_context, "MODE: LIST")
     TixMode.current = TixMode.LIST
+    self.status_bar.push(self.statusbar_context, "MODE: LIST")
+    if Control.reload_notes:
+      self.stored_items.load(self.notes_root, self.recursive)
+      self.create_list()
+      Control.reload_notes = False
     self.vbox.remove(self.editor.get_parent())
     self.vbox.add(self.tree_view.get_parent())
     self.tree_view.grab_focus()
     self.main_window.show_all()
+    
 
   def event_destroy(self, widget, event, data=None):
     if TixMode.current == TixMode.LIST:
@@ -141,7 +157,24 @@ class GtkMain:
     else:
       self.event_switch_to_list_view(None, None)
 
-  def delete_event(self, widget, event, data=None): return False # Closed TIX gui
+  def delete_event(self, widget, event, data=None):
+    if TixMode.current == TixMode.LIST:
+      gtk.main_quit()
+      return False
+    else:
+      self.event_switch_to_list_view(None, None)
+      return True
+
+  def event_save(self, widget, event, data=None):
+    if TixMode.current == TixMode.EDIT:
+      if event.state == gtk.gdk.CONTROL_MASK:
+        self.editor.save()
+        Control.reload_notes = True
+
+  #def event_bold(self, widget, event, data=None):
+  #  if TixMode.current == TixMode.EDIT:
+  #    if event.state == gtk.gdk.CONTROL_MASK:
+  #      self.editor.make_bold()
 
   def event_undo(self, widget, event, data=None):
     if TixMode.current == TixMode.EDIT:
@@ -152,12 +185,18 @@ class GtkMain:
     if TixMode.current == TixMode.EDIT:
       if event.state == gtk.gdk.CONTROL_MASK:
         self.editor.redo()
-
   # }}}
 
-  def keypress_reaction(self, widget, event, data=None):
+  def keypress_reaction_list(self, widget, event, data=None):
     try:
-      f = self.event_dict[event.keyval]
+      f = self.event_dict_list[event.keyval]
+      f(widget, event, data)
+    except KeyError:
+      pass
+
+  def keypress_reaction_editor(self, widget, event, data=None):
+    try:
+      f = self.event_dict_editor[event.keyval]
       f(widget, event, data)
     except KeyError:
       pass
@@ -166,8 +205,9 @@ class GtkMain:
     utils.get_user_config()
     self.stored_items = NoteList()
 
-    self.event_dict = dict({
-      gtk.keysyms.Tab: self.event_toggle_view,
+    self.event_dict_list = dict({
+      #gtk.keysyms.Tab: self.event_toggle_view,
+      gtk.keysyms.Escape: self.event_toggle_view,
       gtk.keysyms.q:   self.event_destroy,
       gtk.keysyms.j:   self.event_select_next,
       gtk.keysyms.k:   self.event_select_prev,
@@ -178,27 +218,35 @@ class GtkMain:
       gtk.keysyms.g:   self.event_select_first,
       gtk.keysyms.n:   self.event_next_tag_mode,
       gtk.keysyms.p:   self.event_prev_tag_mode,
+    })
+
+    self.event_dict_editor = dict({
+      #gtk.keysyms.Tab: self.event_toggle_view,
+      gtk.keysyms.Escape:   self.event_destroy,
       gtk.keysyms.z:   self.event_undo,
       gtk.keysyms.r:   self.event_redo,
+      gtk.keysyms.s:   self.event_save,
+      #gtk.keysyms.b:   self.event_bold,
     })
 
   def main(self, notes_root, recursive):
-    self.stored_items = utils.load(notes_root, recursive)
-    self.stored_items.sort_by_modification_date()
+    self.notes_root = notes_root
+    self.recursive = recursive
+    self.stored_items.load(self.notes_root, self.recursive)
 
-    list_modes = self.stored_items.modes()
-    current_mode = list_modes[UserMode.current]
-    for i, note in enumerate(self.stored_items):
-      note.process_meta(i)
-      note.visible(True)
+    #self.stored_items.sort_by_modification_date()
+    #list_modes = self.stored_items.modes()
+    #current_mode = list_modes[UserMode.current]
+    #for i, note in enumerate(self.stored_items):
+    #  note.process_meta(i)
+    #  note.visible(True)
+    #  if (current_mode == UserMode.ALL or current_mode in note.modes) \
+    #  and note.is_search_match(Control.get_last_regex()):
+    #    note.visible(True)
+    #  else:
+    #    note.visible(False)
+    #self.stored_items.group_todo()
 
-      if (current_mode == UserMode.ALL or current_mode in note.modes) \
-      and note.is_search_match(Control.get_last_regex()):
-        note.visible(True)
-      else:
-        note.visible(False)
-
-    self.stored_items.group_todo()
     Control.reload_notes = True
     self.is_searching = False
 

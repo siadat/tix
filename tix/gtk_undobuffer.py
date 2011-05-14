@@ -56,11 +56,11 @@ class UndoableBuffer(gtk.TextBuffer):
     designed as a drop-in replacement for gtksourceview,
     at least as far as undo is concerned"""
     
-    def __init__(self):
+    def __init__(self, *args): # sina: added *args
         """
         we'll need empty stacks for undo/redo and some state keeping
         """
-        gtk.TextBuffer.__init__(self)
+        gtk.TextBuffer.__init__(self, *args) # sina: added *args
         self.undo_stack = []
         self.redo_stack = []
         self.not_undoable_action = False
