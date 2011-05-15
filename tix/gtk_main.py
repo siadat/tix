@@ -9,7 +9,6 @@ from gtk_classes import List, Editor
 from control import Control, UserMode, TixMode
 
 class GtkMain:
-
   def create_editor(self):
     self.editor = Editor()
     self.editor.connect('key-press-event', self.keypress_reaction_editor)
@@ -42,7 +41,7 @@ class GtkMain:
 
   def create_window(self):
     self.main_window = gtk.Window(gtk.WINDOW_TOPLEVEL)
-    self.main_window.set_title("TIX")
+    self.main_window.set_title("Tix")
     self.main_window.set_default_size(int(500 * 1.4), int(400 * 1.4))
     self.main_window.connect("delete-event", self.delete_event)
     self.main_window.connect("destroy", self.event_destroy, None)
@@ -110,6 +109,21 @@ class GtkMain:
         new_index = (path_start[0] + path_end[0]) / 2
         self.tree_view.set_cursor(new_index)
 
+  def event_add_new_note(self, widget, event, data=None):
+    if TixMode.current == TixMode.LIST:
+      TixMode.current = TixMode.EDIT
+
+      path, col = self.tree_view.get_cursor()
+      current_visible_index = path[0]
+
+      self.editor.load_note(None)
+      self.status_bar.push(self.statusbar_context, 'MODE: EDIT (new file)')
+
+      self.vbox.remove(self.tree_view.get_parent())
+      self.vbox.add(self.editor.get_parent())
+      self.editor.grab_focus()
+      self.main_window.show_all()
+
   def event_toggle_view(self, widget, event, data=None):
     nbr_modes = len(TixMode.OPTIONS)
     reverse = False
@@ -165,11 +179,17 @@ class GtkMain:
       self.event_switch_to_list_view(None, None)
       return True
 
+  def event_insert_date(self, widget, event, data=None):
+    if TixMode.current == TixMode.EDIT:
+      if event.state == gtk.gdk.CONTROL_MASK:
+        self.editor.insert_date()
+
   def event_save(self, widget, event, data=None):
     if TixMode.current == TixMode.EDIT:
       if event.state == gtk.gdk.CONTROL_MASK:
-        self.editor.save()
         Control.reload_notes = True
+        n = self.editor.save()
+        self.status_bar.push(self.statusbar_context, 'MODE: EDIT "%s"' % n.fullpath())
 
   #def event_bold(self, widget, event, data=None):
   #  if TixMode.current == TixMode.EDIT:
@@ -206,8 +226,9 @@ class GtkMain:
     self.stored_items = NoteList()
 
     self.event_dict_list = dict({
-      #gtk.keysyms.Tab: self.event_toggle_view,
-      gtk.keysyms.Escape: self.event_toggle_view,
+      gtk.keysyms.Tab: self.event_toggle_view,
+      #gtk.keysyms.Escape: self.event_toggle_view,
+      gtk.keysyms.a: self.event_add_new_note,
       gtk.keysyms.q:   self.event_destroy,
       gtk.keysyms.j:   self.event_select_next,
       gtk.keysyms.k:   self.event_select_prev,
@@ -221,11 +242,11 @@ class GtkMain:
     })
 
     self.event_dict_editor = dict({
-      #gtk.keysyms.Tab: self.event_toggle_view,
       gtk.keysyms.Escape:   self.event_destroy,
       gtk.keysyms.z:   self.event_undo,
       gtk.keysyms.r:   self.event_redo,
       gtk.keysyms.s:   self.event_save,
+      gtk.keysyms.d:   self.event_insert_date,
       #gtk.keysyms.b:   self.event_bold,
     })
 
@@ -233,19 +254,6 @@ class GtkMain:
     self.notes_root = notes_root
     self.recursive = recursive
     self.stored_items.load(self.notes_root, self.recursive)
-
-    #self.stored_items.sort_by_modification_date()
-    #list_modes = self.stored_items.modes()
-    #current_mode = list_modes[UserMode.current]
-    #for i, note in enumerate(self.stored_items):
-    #  note.process_meta(i)
-    #  note.visible(True)
-    #  if (current_mode == UserMode.ALL or current_mode in note.modes) \
-    #  and note.is_search_match(Control.get_last_regex()):
-    #    note.visible(True)
-    #  else:
-    #    note.visible(False)
-    #self.stored_items.group_todo()
 
     Control.reload_notes = True
     self.is_searching = False
@@ -256,7 +264,6 @@ class GtkMain:
     self.create_statusbar()
     
     self.event_switch_to_list_view(None, None, None)
-    #self.event_switch_to_edit_view(None, None, None)
 
     gtk.main()
 

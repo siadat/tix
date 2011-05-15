@@ -18,7 +18,7 @@ setup(
     'tix.gtk_undobuffer',
     'tix.gtk_classes',
   ],
-  scripts=['tix/tix'],
+  scripts=['tix/tix', 'tix/gtix'],
   requires=['gtk', 'curses'],
   description='TIX text file manager',
   author='Sina Siadatnejad',

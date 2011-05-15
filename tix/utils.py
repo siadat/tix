@@ -1,20 +1,19 @@
-from collections import namedtuple
 import os
 import re
-import tempfile
+import time
 import datetime
 import textwrap
 import subprocess
 import ConfigParser
-import shutil
-from note import Note, NoteList
+from note import Note
 
 # TODO either decide which, or make it an option, in which case there should be
 # a convinient way of converting them
-TAG_STARTS_WITH = r'#'
-TAG_REGEX = r'#[^\s:;#=\(\)\"]{1,50}'
-#TAG_STARTS_WITH = r'@'
-#TAG_REGEX = r'@[^\s:;@=\(\)\"]{1,50}'
+# FIXME compiled regular expressions are faster
+TAG_STARTS_WITH = r'[#]' # [@#]
+TAG_REGEX = r'[#][^\s;#=\(\)\"]{1,50}'
+
+FILENAME_WHITELIST_REGEX = r'.*(txt|md|markdown)$'
 
 HOME_DIR = os.getenv('USERPROFILE') or os.getenv('HOME')
 
@@ -26,50 +25,6 @@ DEFAULT_USER_CONFIGURATIONS = {
 }
 
 user_configurations = DEFAULT_USER_CONFIGURATIONS
-
-def load(root_dir, recursive): # FIXME moved to NoteList, gtk not calling this, just need to fix curses ui
-  if not os.path.exists(root_dir) or not os.path.isdir(root_dir):
-    return NoteList()
-
-  stored_list = NoteList()
-
-  # look at current dir if config's path is empty:
-  if not user_configurations['NOTEPATH']:
-    user_configurations['NOTEPATH'].add(root_dir)
-
-  if recursive:
-    for dir_path in user_configurations['NOTEPATH']:
-      if not os.path.exists(dir_path):
-        continue
-      for file_path, dirs, files in os.walk(dir_path):
-        if '.git' in file_path.split(os.sep):
-          continue
-        stored_list += read_notes(file_path, files)
-        continue
-  else:
-    for file_path in user_configurations['NOTEPATH']:
-      if not os.path.exists(file_path):
-        continue
-      files = os.listdir(file_path)
-      stored_list += read_notes(file_path, files)
-  return stored_list
-
-def read_notes(path, filenames, firstline_only=False):
-  notes = NoteList()
-  for filename in filenames:
-    if not re.search(r'.*(txt|md|markdown)$', filename):
-      continue
-    full_path = os.path.join(path, filename)
-    if os.path.isfile(full_path):
-      with open(full_path, 'r') as f:
-        if firstline_only:
-          text = f.readline()
-        else:
-          text = f.read()
-        #if not is_binary(text):
-        notes.append(Note(filename, path, text))
-  return notes
-
 
 def open_file_in_editor(file_name):
   """ start editor with file_name """
@@ -97,42 +52,24 @@ def open_file_in_reader(file_name):
   except OSError:
     pass
 
-def edit_note(note):
-  fullpath = os.path.join(note.path, note.filename)
-
-  open_file_in_editor(fullpath)
-  with open(fullpath, 'r') as f:
-    note_content = f.read()
-    return Note(note.filename, note.path, note_content)
-  return None
-
-#def archive_note(filename):
-#  directory = os.path.join(user_configurations['TIXPATH'], 'archive')
+def generate_filename():
+  directory = user_configurations['TIXPATH']
+  epoch_seconds = time.time()
+  now = datetime.datetime.now()
+  t = now.strftime("%Y-%m-%d-%H-%M-%S")
+  timestamp = "%s-%s" % (epoch_seconds, t)
+  new_filename = "tix-%s.txt" % timestamp
+  return new_filename
 
 def new_note(initial_text=None):
   directory = user_configurations['TIXPATH']
-  
-  now = datetime.datetime.now()
-  t = now.strftime("%Y-%m-%d-%H-%M-%S")
-
-  import time
-
-  epoch_seconds = time.time()
-  #secs_whole = int(epoch_seconds)
-  #secs_fraction = int((epoch_seconds - secs_whole) * 100)
-  #timestamp = "%s--%s.%s" % (t, secs_whole, secs_fraction)
-  timestamp = "%s-%s" % (epoch_seconds, t)
-
-  new_filename = "tix-%s.txt" % timestamp
+  new_filename = generate_filename()
   new_filepath = os.path.join(directory, new_filename)
 
-  #if not os.path.exists(directory):
-  #  os.mkdir(directory)
   if initial_text:
     with open(new_filepath, 'w') as f:
       f.write(initial_text)
   open_file_in_editor(new_filepath)
-  #os.rmdir(directory)
   if not os.path.exists(new_filepath):
     return None
 
@@ -150,12 +87,8 @@ def get_modification_date(file_path):
   return file_datetime
 
 def get_all_tags(txt):
-  return set([m.lower() for m in re.findall(TAG_REGEX, txt, re.LOCALE)])
-  #return set(re.findall(r'#[\w-\']+', txt, re.LOCALE))
+  return set([m.lower() for m in re.findall(TAG_REGEX, txt, re.L | re.U)])
 
-def log(message):
-  with open('tix.log', 'a') as f:
-    f.write("Log message: %s\n" % message)
 
 def get_number_of_lines(text, note_width):
   lines = text.splitlines()
@@ -233,3 +166,7 @@ def get_first_line(string):
   first_line = re.sub(r'[\n\r].*', '', first_line)
   
   return first_line
+
+def log(message):
+  with open('tix.log', 'a') as f:
+    f.write("Log message: %s\n" % message)

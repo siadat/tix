@@ -4,6 +4,9 @@ import utils
 import collections
 from control import UserMode
 
+TODO_REGEX = r'\b(TODO|DEADLINE)\b'
+NOT_TODO_REGEX = r'\b(NOTODO|NODEADLINE)\b'
+
 class Note(object):
   """The structure used to store all information for each note file."""
   def __init__(self, filename, path, text):
@@ -19,6 +22,7 @@ class Note(object):
 
     #self.modes = set()
     self.modes = utils.get_all_tags(self.text)
+    #self.modes = filter(lambda m: m != "#notodo", self.modes)
     self.is_processed = False
 
   def fullpath(self):
@@ -28,15 +32,15 @@ class Note(object):
     try:
       if regex.strip() is '': return True
       regex = regex.replace('#', '\\#')
-      return re.search(regex, self.text, # self.path + self.filename + self.text,
+      return re.search(regex, self.text,
           re.MULTILINE | re.DOTALL | re.VERBOSE | flags)
     except re.error:
       return True
 
   def process_meta(self, id):
     self.id = id
-    self.is_todo = self.is_a_match(r'\b(TODO|DEADLINE)\b[^\'"`]')
-    self.is_someday = self.is_a_match(r'\b(SOMEDAY)\b[^\'"`]')
+    self.is_todo = self.is_a_match(TODO_REGEX) and not self.is_a_match(NOT_TODO_REGEX)
+    self.is_someday = self.is_a_match(r'\b(SOMEDAY)\b')
     self.first_line = utils.get_first_line(self.text)
     self.is_processed = True
     self.text = " ".join(set([w.lower() for w in self.text.replace(r'\n',' ').split(' ')])) # self.text[:200] # FIXME
@@ -57,6 +61,19 @@ class Note(object):
     with open(self.fullpath(), 'w') as f:
       f.write(new_text)
 
+  def archive_note(self):
+    # TODO, if decided.
+    raise NotImplemented
+
+  def edit(self):
+    fullpath = self.fullpath() # os.path.join(self.path, self.filename)
+
+    utils.open_file_in_editor(fullpath)
+    with open(fullpath, 'r') as f:
+      note_content = f.read()
+      return Note(self.filename, self.path, note_content)
+    return None
+
 class NoteList(collections.MutableSequence):
   """Holds all loaded notes."""
   def __init__(self):
@@ -64,8 +81,7 @@ class NoteList(collections.MutableSequence):
     self.oktype = Note
     self._modes_set = set([UserMode.ALL, UserMode.NOTAG])
 
-  def load(self, root_dir, recursive):
-
+  def load(self, root_dir, recursive, function_while_processing=None): # FIXME root dir? meh.
     from control import Control
 
     if not os.path.exists(root_dir) or not os.path.isdir(root_dir):
@@ -84,14 +100,15 @@ class NoteList(collections.MutableSequence):
         for file_path, dirs, files in os.walk(dir_path):
           if '.git' in file_path.split(os.sep):
             continue
-          self.list += utils.read_notes(file_path, files)
+          self.extend(self.read_notes(file_path, files))
           continue
     else:
       for file_path in utils.user_configurations['NOTEPATH']:
         if not os.path.exists(file_path):
           continue
         files = os.listdir(file_path)
-        self.list += utils.read_notes(file_path, files)
+        self.extend(self.read_notes(file_path, files))
+
     self.sort_by_modification_date()
     
     list_modes = self.modes()
@@ -104,8 +121,24 @@ class NoteList(collections.MutableSequence):
         note.visible(True)
       else:
         note.visible(False)
+      if function_while_processing and i % 100 == 0:
+        function_while_processing()
 
-    self.group_todo()
+  def read_notes(self, path, filenames, firstline_only=False):
+    notes = NoteList()
+    for filename in filenames:
+      if not re.search(utils.FILENAME_WHITELIST_REGEX, filename):
+        continue
+      full_path = os.path.join(path, filename)
+      if os.path.isfile(full_path):
+        with open(full_path, 'r') as f:
+          if firstline_only:
+            text = f.readline()
+          else:
+            text = f.read()
+          #if not utils.is_binary(text):
+          notes.append(Note(filename, path, text))
+    return notes
 
   def reset(self):
     del self.list[:]
@@ -151,8 +184,8 @@ class NoteList(collections.MutableSequence):
 
   def modes(self):
     def comp(a, b):
-      v1 = a.lower().replace(utils.TAG_STARTS_WITH, 'z')
-      v2 = b.lower().replace(utils.TAG_STARTS_WITH, 'z')
+      v1 = re.sub(utils.TAG_STARTS_WITH, 'z', a.lower(), 1)
+      v2 = re.sub(utils.TAG_STARTS_WITH, 'z', b.lower(), 1)
       return cmp(v1, v2)
     return sorted(list(self._modes_set), cmp=comp)
 

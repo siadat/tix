@@ -1,6 +1,7 @@
 import gtk
 import pango
 from control import Control, UserMode, TixMode
+from note import Note
 from gtk_undobuffer import UndoableBuffer
 class List(gtk.TreeView):
   def __init__(self, stored_items):
@@ -8,13 +9,14 @@ class List(gtk.TreeView):
     note_items_model = gtk.ListStore(*types)
     all_modes = stored_items.modes()
     for i, item in enumerate(stored_items):
-      modes = " ".join(["<span background='#eee' color='#000'> %s </span>" % m.upper() for m in item.modes if m != all_modes[UserMode.current]])
+      # eee, 333
+      modes = " ".join(["<span background='#d0ddef' color='#245'><span color='#8ab'>%s</span>%s </span>" % (m[0], m[1:]) for m in item.modes if m != all_modes[UserMode.current]])
       first_line = item.first_line
       #bg_color = None # '#ddd' if item.is_todo else None
       if not modes: modes = "<span color='#999'>None</span>"
       if not first_line: first_line = "<span color='#999'>Empty</span>"
 
-      todo_marker = '<span size="smaller" color="#579" weight="bold" background="#d0ddef"> TODO </span> ' #8a5
+      todo_marker = "<span size='smaller' color='#830' background='#edc'> TODO </span> " #8a5
       if item.is_todo:
         note_items_model.append((
           '%s%s' % (todo_marker, modes),
@@ -77,21 +79,35 @@ class Editor(gtk.TextView):
   def redo(self):
     self.get_buffer().redo()
 
-  def load_note(self, note):
+  def insert_date(self):
+    import time
+    import datetime
+    buff = self.get_buffer()
+    now = datetime.datetime.now()
+    z = time.strftime("%Z")
+    t = now.strftime("%Y-%m-%d-%H:%M:%S")
+    buff.insert_at_cursor("%s-%s" % (t, z))
+
+  def load_note(self, note=None):
     self.note = note
     buff = UndoableBuffer(self.texttagtable)
-    buff.set_text(note.load_fulltext_from_file())
+    if self.note:
+      buff.set_text(note.load_fulltext_from_file())
+    else:
+      buff.set_text("")
     self.set_buffer(buff)
-    buff.undo_stack.pop() # FIXME is it a safe way of removing the initial undo item (empty textbox)
+    if buff.undo_stack:
+      buff.undo_stack.pop() # FIXME is it a safe way of removing the initial undo item (empty textbox)
+    buff.place_cursor(buff.get_start_iter())
 
   def save(self):
     buff = self.get_buffer()
     text = buff.get_text(buff.get_start_iter(), buff.get_end_iter())
+    if not self.note:
+      import utils
+      self.note = Note(utils.generate_filename(), utils.user_configurations['TIXPATH'], text)
     self.note.write_text_to_file(text)
-    #if len(buff.undo_stack) > 0:
-    #  return True # Changed
-    #else:
-    #  return False # Unchanged
+    return self.note
 
   def mark_tags(self):
     #TODO

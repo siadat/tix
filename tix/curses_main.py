@@ -24,40 +24,16 @@ class CursesMain(object):
       self.outer = outer
 
     def run(self):
+
+      def redraw():
+        curses_view.complete_redraw(self.outer.stored_items)
+
       Control.reload_thread_lock.acquire()
 
-      #before_id = 0
-      #if len(self.outer.stored_items) > 0:
-      #  before_id = self.outer.stored_items.get_visible(Control.list_visible_index).id
-
-      self.outer.stored_items = utils.load(self.outer.notes_root, self.outer.recursive)
-      self.outer.stored_items.sort_by_modification_date()
-
-      nbr_objects = len(self.outer.stored_items)
-
-      list_modes = self.outer.stored_items.modes()
-      current_mode = list_modes[UserMode.current]
-      
-      #visible_counter = 0
-      for i, note in enumerate(self.outer.stored_items):
-        note.process_meta(i)
-
-        if note.is_search_match(Control.get_last_regex()):
-          if (current_mode == UserMode.ALL or current_mode in note.modes):
-            note.visible(True)
-          elif (current_mode == UserMode.NOTAG and not note.modes):
-            note.visible(True)
-          #if note.id == before_id:
-          #  Control.list_visible_index = visible_counter
-          #visible_counter += 1
-        else:
-          note.visible(False)
-
-        if i % 100 == 0: # or i >= nbr_objects - 1:
-          curses_view.complete_redraw(self.outer.stored_items)
-      
+      self.outer.stored_items.load(self.outer.notes_root, self.outer.recursive, redraw)
       self.outer.stored_items.group_todo()
       curses_view.complete_redraw(self.outer.stored_items)
+
       Control.reload_thread_lock.release()
 
   @classmethod
@@ -235,7 +211,7 @@ class CursesMain(object):
         curses_view.end_curses()
         list_modes = self.stored_items.modes()
         current_mode = list_modes[UserMode.current]
-        if not current_mode in (UserMode.ALL, UserMode.NOTAG):
+        if current_mode in (UserMode.ALL, UserMode.NOTAG):
           current_mode = None
         else:
           current_mode = current_mode + "\n\n"
@@ -286,7 +262,7 @@ class CursesMain(object):
       if TixMode.current == TixMode.LIST and len(self.stored_items) > 0:
         curses_view.end_curses()
         note_before = self.stored_items.get_visible(Control.list_visible_index)
-        note_after = utils.edit_note(note_before)
+        note_after = note_before.edit()
         curses_view.init_curses()
         if note_before.text != note_after.text:
           Control.reload_notes = True
