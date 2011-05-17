@@ -5,44 +5,58 @@ from note import Note
 from gtk_undobuffer import UndoableBuffer
 class List(gtk.TreeView):
   def __init__(self, stored_items):
-    types = [str] * 2
+    types = [str] * 1
     note_items_model = gtk.ListStore(*types)
     all_modes = stored_items.modes()
     for i, item in enumerate(stored_items):
-      # eee, 333
-      modes = " ".join(["<span background='#d0ddef' color='#245'><span color='#8ab'>%s</span>%s </span>" % (m[0], m[1:]) for m in item.modes if m != all_modes[UserMode.current]])
+      if not item.is_shown: continue
+      modes = " ".join(["<span background='#d0ddef' color='#024'><span color='#8ab'>%s</span>%s </span>" % (m[0], m[1:]) for m in item.modes if m != all_modes[UserMode.current]])
       first_line = item.first_line
+      # eee, 333
       #bg_color = None # '#ddd' if item.is_todo else None
-      if not modes: modes = "<span color='#999'>None</span>"
-      if not first_line: first_line = "<span color='#999'>Empty</span>"
 
-      todo_marker = "<span size='smaller' color='#830' background='#edc'> TODO </span> " #8a5
+      #if not modes: modes = "<span color='#999'>None</span>"
+      if not first_line:
+        first_line = "<span color='#999'>Empty</span>"
+      else:
+        first_line = "<span color='#444'>%s</span>" % item.first_line
+        pass
+        #if modes: first_line = ""
+
+      todo_marker = "<span size='smaller' weight='bold' color='#fff' background='#c30'> TODO </span> " #8a5
       if item.is_todo:
         note_items_model.append((
-          '%s%s' % (todo_marker, modes),
-          '%s%s' % ('', first_line),
+          '%s%s %s' % (todo_marker, modes, first_line, ),
+          #'%s%s %s' % (todo_marker, first_line, modes),
+          #'%s %s' % (todo_marker, modes),
+          #'%s%s' % (todo_marker, modes),
+          #'%s%s' % ('', first_line),
         ))
       else:
         note_items_model.append((
-          modes, 
-          first_line,
+          "%s %s" % (modes, first_line, ),
+          #"%s %s" % (first_line, modes, ),
+          #"%s" % (modes, ),
+          #modes, 
+          #first_line,
         ))
-
     gtk.TreeView.__init__(self, note_items_model)
     
     self.set_cursor(0)
-    self.set_rules_hint(False)
+    self.set_rules_hint(True)
     self.set_enable_search(False)
     self.set_headers_clickable(False)
-    self.set_headers_visible(True)
+    self.set_headers_visible(False)
     
-    col1 = self.create_column(0, 'Tags')
-    col2 = self.create_column(1, 'First line without tags')
+    col1 = self.create_column(0, 'Notes')
+    #col1 = self.create_column(0, 'Tags')
+    #col2 = self.create_column(1, 'First line without tags')
+
     col1.set_max_width(200)
-    col2.set_max_width(400)
+    #col2.set_max_width(300)
 
     self.append_column(col1)
-    self.append_column(col2)
+    #self.append_column(col2)
 
     
     s = self.get_selection()
@@ -56,6 +70,7 @@ class List(gtk.TreeView):
     r = gtk.CellRendererText()
     column = gtk.TreeViewColumn(name, r, markup=id)
     column.set_sort_column_id(id)
+    #column.set_alignment(1)
     return column
 
 class Editor(gtk.TextView):
@@ -82,6 +97,7 @@ class Editor(gtk.TextView):
   def insert_date(self):
     import time
     import datetime
+
     buff = self.get_buffer()
     now = datetime.datetime.now()
     z = time.strftime("%Z")

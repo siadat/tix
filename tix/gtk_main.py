@@ -2,6 +2,8 @@
 #pygtk.require('2.0')
 
 import gtk
+import pango
+
 import sys
 import utils
 from note import Note, NoteList
@@ -9,6 +11,15 @@ from gtk_classes import List, Editor
 from control import Control, UserMode, TixMode
 
 class GtkMain:
+  def create_commandline(self):
+    self.commandline = gtk.Entry(1024)
+    self.commandline.connect('changed', self.keypress_reaction_commandline_changed)
+    self.commandline.connect('key-press-event', self.keypress_reaction_commandline_keypressed)
+
+    font_desc = pango.FontDescription('monospace')
+    self.commandline.modify_font(font_desc)
+    #self.commandline.set_activates_default(True)
+
   def create_editor(self):
     self.editor = Editor()
     self.editor.connect('key-press-event', self.keypress_reaction_editor)
@@ -123,6 +134,45 @@ class GtkMain:
       self.vbox.add(self.editor.get_parent())
       self.editor.grab_focus()
       self.main_window.show_all()
+  
+  def event_execute_command(self, widget, event, data=None):
+    regex = self.commandline.get_text()[1:]
+    #if regex.strip(): 
+    Control.regex_patterns.append(regex)
+    self.stored_items.filter()
+    
+    # repopulate tree_view:
+    self.vbox.remove(self.tree_view.get_parent())
+    self.create_list()
+
+    Control.reload_notes = False
+    self.event_switch_to_list_view(None, None)
+
+    # TODO
+    self.commandline.set_text("")
+    self.tree_view.grab_focus()
+
+  def event_check_commandline_text(self, widget, event, data=None):
+    if self.commandline.get_text_length() == 0:
+      self.event_focus_list(None, None)
+
+  def event_focus_list(self, widget, event, data=None):
+    self.commandline.set_text("")
+    self.tree_view.grab_focus()
+
+  def event_focus_commandline_search_mode(self, widget, event, data=None):
+    self.commandline.set_text('/')
+
+    self.commandline.grab_focus()
+    l = self.commandline.get_text_length()
+    self.commandline.select_region(l,l)
+
+  def event_focus_commandline_command_mode(self, widget, event, data=None):
+    self.commandline.set_text(':')
+
+    self.commandline.grab_focus()
+    l = self.commandline.get_text_length()
+    self.commandline.select_region(l,l)
 
   def event_toggle_view(self, widget, event, data=None):
     nbr_modes = len(TixMode.OPTIONS)
@@ -140,13 +190,11 @@ class GtkMain:
 
   def event_switch_to_edit_view(self, widget, event, data=None):
     TixMode.current = TixMode.EDIT
-
     path, col = self.tree_view.get_cursor()
     current_visible_index = path[0]
-
-    self.editor.load_note(self.stored_items[current_visible_index])
+    curr_note = self.stored_items.get_visible(current_visible_index)
+    self.editor.load_note(curr_note)
     self.status_bar.push(self.statusbar_context, 'MODE: EDIT "%s"' % self.stored_items[current_visible_index].fullpath())
-
     self.vbox.remove(self.tree_view.get_parent())
     self.vbox.add(self.editor.get_parent())
     self.editor.grab_focus()
@@ -161,6 +209,7 @@ class GtkMain:
       Control.reload_notes = False
     self.vbox.remove(self.editor.get_parent())
     self.vbox.add(self.tree_view.get_parent())
+    self.vbox.pack_end(self.commandline, False, False, 0)
     self.tree_view.grab_focus()
     self.main_window.show_all()
     
@@ -214,6 +263,16 @@ class GtkMain:
     except KeyError:
       pass
 
+  def keypress_reaction_commandline_changed(self, widget, event=None, data=None):
+    self.event_check_commandline_text(widget, event, data)
+
+  def keypress_reaction_commandline_keypressed(self, widget, event=None, data=None):
+    try:
+      f = self.event_dict_commandline[event.keyval]
+      f(widget, event, data)
+    except KeyError:
+      pass
+
   def keypress_reaction_editor(self, widget, event, data=None):
     try:
       f = self.event_dict_editor[event.keyval]
@@ -225,28 +284,40 @@ class GtkMain:
     utils.get_user_config()
     self.stored_items = NoteList()
 
+    self.event_dict_commandline = dict({
+      gtk.keysyms.Escape: self.event_focus_list,
+      gtk.keysyms.Return: self.event_execute_command,
+    })
+
     self.event_dict_list = dict({
-      gtk.keysyms.Tab: self.event_toggle_view,
+      # List to commandline
+      gtk.keysyms.colon: self.event_focus_commandline_command_mode,
+      gtk.keysyms.slash: self.event_focus_commandline_search_mode,
+
+      # List to editor
       #gtk.keysyms.Escape: self.event_toggle_view,
+      gtk.keysyms.Tab: self.event_toggle_view,
       gtk.keysyms.a: self.event_add_new_note,
-      gtk.keysyms.q:   self.event_destroy,
-      gtk.keysyms.j:   self.event_select_next,
-      gtk.keysyms.k:   self.event_select_prev,
-      gtk.keysyms.G:   self.event_select_last,
-      gtk.keysyms.M:   self.event_select_middle_visible,
-      gtk.keysyms.L:   self.event_select_last_visible,
-      gtk.keysyms.H:   self.event_select_first_visible,
-      gtk.keysyms.g:   self.event_select_first,
-      gtk.keysyms.n:   self.event_next_tag_mode,
-      gtk.keysyms.p:   self.event_prev_tag_mode,
+
+      # List
+      gtk.keysyms.q: self.event_destroy,
+      gtk.keysyms.j: self.event_select_next,
+      gtk.keysyms.k: self.event_select_prev,
+      gtk.keysyms.G: self.event_select_last,
+      gtk.keysyms.M: self.event_select_middle_visible,
+      gtk.keysyms.L: self.event_select_last_visible,
+      gtk.keysyms.H: self.event_select_first_visible,
+      gtk.keysyms.g: self.event_select_first,
+      gtk.keysyms.n: self.event_next_tag_mode,
+      gtk.keysyms.p: self.event_prev_tag_mode,
     })
 
     self.event_dict_editor = dict({
-      gtk.keysyms.Escape:   self.event_destroy,
-      gtk.keysyms.z:   self.event_undo,
-      gtk.keysyms.r:   self.event_redo,
-      gtk.keysyms.s:   self.event_save,
-      gtk.keysyms.d:   self.event_insert_date,
+      gtk.keysyms.Escape: self.event_destroy,
+      gtk.keysyms.z: self.event_undo,
+      gtk.keysyms.r: self.event_redo,
+      gtk.keysyms.s: self.event_save,
+      gtk.keysyms.d: self.event_insert_date,
       #gtk.keysyms.b:   self.event_bold,
     })
 
@@ -262,6 +333,7 @@ class GtkMain:
     self.create_list()
     self.create_editor()
     self.create_statusbar()
+    self.create_commandline()
     
     self.event_switch_to_list_view(None, None, None)
 

@@ -306,14 +306,17 @@ Quick start:
         continue
 
       indent_level = 0
-
       pad_h = self.list_item_height - 1
       pad_w = self.list_width - indent_level
       pad_top = y
 
-      pad_item = self.screen.subpad(
-          pad_h, pad_w,
-          pad_top, self.margin_left + indent_level)
+      try:
+        pad_item = self.screen.subpad(
+            pad_h, pad_w,
+            pad_top, self.margin_left + indent_level)
+      except curses.error as e:
+        y += self.list_item_height
+        continue
 
       flags = 0
 

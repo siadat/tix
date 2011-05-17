@@ -51,7 +51,7 @@ class CursesMain(object):
     self.notes_root = notes_root
 
     Control.reload_notes = True
-    self.is_searching = False
+    self.is_searching = False # TODO convert this into a TixMode instead
 
     # {{{ funcs for key events
     def keypress_list_pageup():
@@ -309,7 +309,11 @@ class CursesMain(object):
 
     def keypress_switch_to_tags_mode():
       Control.reload_notes = False
-      TixMode.current = TixMode.TAGS
+      if TixMode.current == TixMode.LIST:
+        TixMode.current = TixMode.TAGS
+      elif TixMode.current == TixMode.TAGS:
+        keypress_enter()
+        pass
 
     def pressed_slash():
       Control.reload_notes = False
@@ -367,7 +371,6 @@ class CursesMain(object):
           current_mode = list_modes[UserMode.current]
           for note in self.stored_items:
 
-
             if note.is_search_match(regex):
               if (current_mode == UserMode.ALL or current_mode in note.modes):
                 note.visible(True)
@@ -384,7 +387,8 @@ class CursesMain(object):
       ord('L'): keypress_select_last_in_view,
       ord('j'): keypress_select_next,
       ord('k'): keypress_select_prev,
-      ord('h'): keypress_switch_to_list_mode,
+      #ord('h'): keypress_switch_to_list_mode,
+      ord('h'): keypress_switch_to_tags_mode,
       ord('l'): keypress_switch_to_tags_mode,
       ord('g'): keypress_select_first,
       ord('G'): keypress_select_last,

@@ -111,11 +111,26 @@ class NoteList(collections.MutableSequence):
 
     self.sort_by_modification_date()
     
+    self.filter(function_while_processing)
+
+    #list_modes = self.modes()
+    #current_mode = list_modes[UserMode.current]
+    #for i, note in enumerate(self.list):
+    #  note.process_meta(i)
+    #  if (current_mode == UserMode.ALL or current_mode in note.modes) \
+    #  and note.is_search_match(Control.get_last_regex()):
+    #    note.visible(True)
+    #  else:
+    #    note.visible(False)
+    #  if function_while_processing and i % 100 == 0:
+    #    function_while_processing()
+
+  def filter(self, function_while_processing=None):
+    from control import Control
     list_modes = self.modes()
     current_mode = list_modes[UserMode.current]
     for i, note in enumerate(self.list):
-      note.process_meta(i)
-      note.visible(True)
+      if not note.is_processed: note.process_meta(i)
       if (current_mode == UserMode.ALL or current_mode in note.modes) \
       and note.is_search_match(Control.get_last_regex()):
         note.visible(True)
