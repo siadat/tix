@@ -41,7 +41,9 @@ class Note(object):
     self.is_someday = self.is_a_match(r'\b(SOMEDAY)\b')
     self.first_line = utils.get_first_line(self.text)
     self.is_processed = True
-    self.text = " ".join(set([w.lower() for w in self.text.replace(r'\n',' ').split(' ')])) # self.text[:200] # FIXME
+    
+    #TODO use a hash instead, key is a word value is the set of all notes containing that word
+    self.text = " ".join(set([w.lower() for w in self.text.replace('\n',' ').split(' ') if len(w) > 1])) # self.text[:200] # FIXME
     #self.nbr_of_lines = utils.get_number_of_lines(self.text, 80)
 
   def is_search_match(self, regex):
