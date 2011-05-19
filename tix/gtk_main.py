@@ -229,6 +229,11 @@ class GtkMain:
     self.main_window.show_all()
     
 
+  def event_delete_note(self, widget, event, data=None):
+    if self.editor.delete_current_file():
+      Control.reload_notes = True
+      self.event_switch_to_list_view(None, None)
+
   def event_destroy(self, widget, event, data=None):
     if TixMode.current == TixMode.LIST:
       gtk.main_quit()
@@ -325,7 +330,7 @@ class GtkMain:
       gtk.keysyms.g: self.event_select_first,
       gtk.keysyms.n: self.event_next_tag_mode,
       gtk.keysyms.p: self.event_prev_tag_mode,
-      gtk.keysyms.F6: self.event_edit_config,
+      gtk.keysyms.F3: self.event_edit_config,
       gtk.keysyms.F5: self.event_reload_config,
     })
 
@@ -335,6 +340,7 @@ class GtkMain:
       gtk.keysyms.r: self.event_redo,
       gtk.keysyms.s: self.event_save,
       gtk.keysyms.d: self.event_insert_date,
+      gtk.keysyms.F4: self.event_delete_note,
       #gtk.keysyms.b:   self.event_bold,
     })
 

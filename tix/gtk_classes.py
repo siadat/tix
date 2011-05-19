@@ -138,6 +138,22 @@ class Editor(gtk.TextView):
       buff.undo_stack.pop() # FIXME is it a safe way of removing the initial undo item (empty textbox)
     buff.place_cursor(buff.get_start_iter())
 
+  def delete_current_file(self):
+    dialog = gtk.MessageDialog(flags=gtk.DIALOG_MODAL,
+                               type=gtk.MESSAGE_QUESTION,
+                               buttons=gtk.BUTTONS_YES_NO,
+                               message_format="Are you sure you want to delete this file? \n%s" % self.note.fullpath())
+    dialog.set_title("Delete file")
+    response = dialog.run()
+    dialog.destroy()
+    if response == gtk.RESPONSE_YES:
+      import os
+      os.remove(self.note.fullpath())
+      return True
+    else:
+      return False
+
+
   def save(self):
     buff = self.get_buffer()
     text = buff.get_text(buff.get_start_iter(), buff.get_end_iter())
