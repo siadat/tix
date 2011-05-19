@@ -7,7 +7,7 @@ import pango
 import sys
 import utils
 from note import Note, NoteList
-from gtk_classes import List, Editor
+from gtk_classes import List, Editor, StatusBar
 from control import Control, UserMode, TixMode
 
 class GtkMain:
@@ -43,17 +43,15 @@ class GtkMain:
     self.tree_view.connect('key-press-event', self.keypress_reaction_list)
 
   def create_statusbar(self):
-    self.status_bar = gtk.Statusbar()
-    self.statusbar_context = self.status_bar.get_context_id("the status bar")
-    self.status_bar.push(self.statusbar_context, "TIX")
-    self.status_bar.set_has_resize_grip(False)
+    self.status_bar = StatusBar() # gtk.Statusbar()
+    self.status_bar.update("TIX")
     self.vbox.pack_end(self.status_bar, False, False, 0)
     self.status_bar.show()
 
   def create_window(self):
     self.main_window = gtk.Window(gtk.WINDOW_TOPLEVEL)
     self.main_window.set_title("Tix")
-    self.main_window.set_default_size(int(500 * 1.4), int(400 * 1.4))
+    self.main_window.set_default_size(int(500 * 1.), int(400 * 1.))
     self.main_window.connect("delete-event", self.delete_event)
     self.main_window.connect("destroy", self.event_destroy, None)
     self.main_window.set_border_width(10)
@@ -85,6 +83,27 @@ class GtkMain:
         new_index = path[0] + 1
         if new_index < len(self.tree_view.get_model()):
           self.tree_view.set_cursor(new_index)
+
+  def event_reload_config(self, widget, event, data=None):
+    utils.get_user_config()
+
+    self.vbox.remove(self.tree_view.get_parent())
+    self.create_list()
+    Control.reload_notes = True
+    self.event_switch_to_list_view(None, None)
+
+  def event_edit_config(self, widget, event, data=None):
+    curr_note = Note('tix.cfg', utils.user_configurations['TIXPATH'], None)
+    self.show_note_in_edit_mode(curr_note)
+
+  def show_note_in_edit_mode(self, curr_note):
+    TixMode.current = TixMode.EDIT
+    self.editor.load_note(curr_note)
+    self.status_bar.update('"%s"' % curr_note.fullpath())
+    self.vbox.remove(self.tree_view.get_parent())
+    self.vbox.add(self.editor.get_parent())
+    self.editor.grab_focus()
+    self.main_window.show_all()
 
   def event_prev_tag_mode(self, widget, event, data=None): pass # TODO
   def event_next_tag_mode(self, widget, event, data=None): pass # TODO
@@ -124,11 +143,11 @@ class GtkMain:
     if TixMode.current == TixMode.LIST:
       TixMode.current = TixMode.EDIT
 
-      path, col = self.tree_view.get_cursor()
-      current_visible_index = path[0]
+      #path, col = self.tree_view.get_cursor()
+      #current_visible_index = path[0]
 
       self.editor.load_note(None)
-      self.status_bar.push(self.statusbar_context, 'MODE: EDIT (new file)')
+      self.status_bar.update('(new file)')
 
       self.vbox.remove(self.tree_view.get_parent())
       self.vbox.add(self.editor.get_parent())
@@ -189,20 +208,16 @@ class GtkMain:
       self.event_switch_to_list_view(None, None)
 
   def event_switch_to_edit_view(self, widget, event, data=None):
-    TixMode.current = TixMode.EDIT
     path, col = self.tree_view.get_cursor()
-    current_visible_index = path[0]
-    curr_note = self.stored_items.get_visible(current_visible_index)
-    self.editor.load_note(curr_note)
-    self.status_bar.push(self.statusbar_context, 'MODE: EDIT "%s"' % self.stored_items[current_visible_index].fullpath())
-    self.vbox.remove(self.tree_view.get_parent())
-    self.vbox.add(self.editor.get_parent())
-    self.editor.grab_focus()
-    self.main_window.show_all()
+    if path:
+      current_visible_index = path[0]
+      curr_note = self.stored_items.get_visible(current_visible_index)
+
+      self.show_note_in_edit_mode(curr_note)
 
   def event_switch_to_list_view(self, widget, event, data=None):
     TixMode.current = TixMode.LIST
-    self.status_bar.push(self.statusbar_context, "MODE: LIST")
+    self.status_bar.update(" | Search: %s" % Control.get_last_regex() if Control.get_last_regex() else "")
     if Control.reload_notes:
       self.stored_items.load(self.notes_root, self.recursive)
       self.create_list()
@@ -238,7 +253,7 @@ class GtkMain:
       if event.state == gtk.gdk.CONTROL_MASK:
         Control.reload_notes = True
         n = self.editor.save()
-        self.status_bar.push(self.statusbar_context, 'MODE: EDIT "%s"' % n.fullpath())
+        self.status_bar.update('"%s"' % n.fullpath())
 
   #def event_bold(self, widget, event, data=None):
   #  if TixMode.current == TixMode.EDIT:
@@ -291,7 +306,7 @@ class GtkMain:
 
     self.event_dict_list = dict({
       # List to commandline
-      gtk.keysyms.colon: self.event_focus_commandline_command_mode,
+      #gtk.keysyms.colon: self.event_focus_commandline_command_mode,
       gtk.keysyms.slash: self.event_focus_commandline_search_mode,
 
       # List to editor
@@ -310,6 +325,8 @@ class GtkMain:
       gtk.keysyms.g: self.event_select_first,
       gtk.keysyms.n: self.event_next_tag_mode,
       gtk.keysyms.p: self.event_prev_tag_mode,
+      gtk.keysyms.F6: self.event_edit_config,
+      gtk.keysyms.F5: self.event_reload_config,
     })
 
     self.event_dict_editor = dict({

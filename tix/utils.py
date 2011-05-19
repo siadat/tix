@@ -7,11 +7,10 @@ import subprocess
 import ConfigParser
 from note import Note
 
-# TODO either decide which, or make it an option, in which case there should be
-# a convinient way of converting them
+#TODO_REGEX = r'\b(TODO|DEADLINE)\b'
+#NOT_TODO_REGEX = r'\b(NOTODO|NODEADLINE)\b'
+
 # FIXME compiled regular expressions are faster
-TAG_STARTS_WITH = r'[#]' # [@#]
-TAG_REGEX = r'[#][^\s;#=\(\)\"]{1,50}'
 
 FILENAME_WHITELIST_REGEX = r'.*(txt|md|markdown)$'
 
@@ -22,6 +21,9 @@ DEFAULT_USER_CONFIGURATIONS = {
   'READER': 'less',
   'TIXPATH': os.path.join(HOME_DIR, 'tix'),
   'NOTEPATH': [os.path.join(HOME_DIR, 'tix')],
+  'TAG_REGEX': r'[#][^\s;#=\(\)\"]{1,50}',
+  'IMPORTANT_REGEX': r'\b(TODO|DEADLINE)\b',
+  'UNIMPORTANT_REGEX': r'\b(NOTODO|NODEADLINE)\b',
 }
 
 user_configurations = DEFAULT_USER_CONFIGURATIONS
@@ -87,7 +89,7 @@ def get_modification_date(file_path):
   return file_datetime
 
 def get_all_tags(txt):
-  return set([m.lower() for m in re.findall(TAG_REGEX, txt, re.L | re.U)])
+  return set([m.lower() for m in re.findall(user_configurations['TAG_REGEX'], txt, re.L | re.U)])
 
 
 def get_number_of_lines(text, note_width):
@@ -124,6 +126,11 @@ def get_user_config():
       pass
 
     try:
+      user_configurations['TAG_REGEX'] = config_parser.get('general', 'tag_regex')
+    except ConfigParser.NoOptionError as e:
+      pass
+
+    try:
       path = config_parser.get('general', 'notepath').replace(r'~', HOME_DIR).split(',')
       user_configurations['NOTEPATH'] = set([p.split(':')[0].strip() for p in path])
       if '' in user_configurations['NOTEPATH']:
@@ -145,6 +152,7 @@ def get_user_config():
     config_parser.set('general', 'reader %f',   user_configurations['READER'])
     config_parser.set('general', 'tixpath',  user_configurations['TIXPATH'])
     config_parser.set('general', 'notepath', ','.join(user_configurations['NOTEPATH']))
+    config_parser.set('general', 'tag_regex',  user_configurations['TAG_REGEX'])
     with open(config_path, 'wb') as f:
       config_parser.write(f)
 
@@ -157,7 +165,7 @@ def is_binary(string):
 def get_first_line(string):
   lines = list()
   for s in string.splitlines():
-    s = re.sub(TAG_REGEX, '', s).strip()
+    s = re.sub(user_configurations['TAG_REGEX'], '', s).strip()
     if s:
       lines.append(s)
       if len(lines) > 1: break

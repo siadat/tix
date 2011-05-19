@@ -46,3 +46,4 @@ class UserMode(object):
   current = 0
   ALL = 'ALL'
   NOTAG = 'NOTAG'
+  DEFAULT_MODES = set([ALL, NOTAG])

@@ -3,14 +3,36 @@ import pango
 from control import Control, UserMode, TixMode
 from note import Note
 from gtk_undobuffer import UndoableBuffer
+
+class StatusBar(gtk.Statusbar):
+  def __init__(self, *args):
+    gtk.Statusbar.__init__(self, *args)
+    self.statusbar_context = self.get_context_id("the status bar")
+    self.set_has_resize_grip(False)
+
+  def update(self, message):
+    tix_mode = TixMode.OPTIONS[TixMode.current].upper()
+    self.push(self.statusbar_context, "%s MODE %s" % (tix_mode, message))
+
 class List(gtk.TreeView):
   def __init__(self, stored_items):
     types = [str] * 1
     note_items_model = gtk.ListStore(*types)
     all_modes = stored_items.modes()
+    #checked_modes = set()
     for i, item in enumerate(stored_items):
       if not item.is_shown: continue
-      modes = " ".join(["<span background='#d0ddef' color='#024'><span color='#8ab'>%s</span>%s </span>" % (m[0], m[1:]) for m in item.modes if m != all_modes[UserMode.current]])
+
+      #modes = " ".join(["<span background='#d0ddef' color='#024'><span color='#8ab'>%s</span>%s </span>" % (m[0], m[1:]) for m in item.modes if m != all_modes[UserMode.current]])
+      modes = " ".join(["<span background='#d0ddef' color='#024'> %s </span>" % m for m in item.modes if m != all_modes[UserMode.current]])
+
+      #new_modes = item.modes.difference(checked_modes)
+      #old_modes = item.modes.intersection(checked_modes)
+      #modes_new = " ".join(["<span background='#d0ddef' color='#024'>%s <span color='#8ab'>%s</span>%s </span>" % (stored_items._mode_counter[m], m[0], m[1:]) for m in new_modes if m != all_modes[UserMode.current]])
+      #modes_old = " ".join(["<span background='#fff' color='#024'>%s <span color='#8ab'>%s</span>%s </span>" % (stored_items._mode_counter[m], m[0], m[1:]) for m in old_modes if m != all_modes[UserMode.current]])
+      #modes = "%s %s" % (modes_new, modes_old)
+      #checked_modes = checked_modes.union(new_modes)
+
       first_line = item.first_line
       # eee, 333
       #bg_color = None # '#ddd' if item.is_todo else None
@@ -19,7 +41,7 @@ class List(gtk.TreeView):
       if not first_line:
         first_line = "<span color='#999'>Empty</span>"
       else:
-        first_line = "<span color='#444'>%s</span>" % item.first_line
+        first_line = "%s" % item.first_line
         pass
         #if modes: first_line = ""
 

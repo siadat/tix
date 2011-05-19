@@ -4,13 +4,11 @@ import utils
 import collections
 from control import UserMode
 
-TODO_REGEX = r'\b(TODO|DEADLINE)\b'
-NOT_TODO_REGEX = r'\b(NOTODO|NODEADLINE)\b'
-
 class Note(object):
   """The structure used to store all information for each note file."""
-  def __init__(self, filename, path, text):
+  def __init__(self, filename, path, text=None):
     self.is_shown = False
+    if not text: text = ""
     self.text = text
 
     self.filename = filename
@@ -39,7 +37,7 @@ class Note(object):
 
   def process_meta(self, id):
     self.id = id
-    self.is_todo = self.is_a_match(TODO_REGEX) and not self.is_a_match(NOT_TODO_REGEX)
+    self.is_todo = self.is_a_match(utils.user_configurations['IMPORTANT_REGEX']) and not self.is_a_match(utils.user_configurations['UNIMPORTANT_REGEX'])
     self.is_someday = self.is_a_match(r'\b(SOMEDAY)\b')
     self.first_line = utils.get_first_line(self.text)
     self.is_processed = True
@@ -80,6 +78,7 @@ class NoteList(collections.MutableSequence):
     self.list = list()
     self.oktype = Note
     self._modes_set = set([UserMode.ALL, UserMode.NOTAG])
+    self._mode_counter = dict()
 
   def load(self, root_dir, recursive, function_while_processing=None): # FIXME root dir? meh.
     from control import Control
@@ -157,6 +156,8 @@ class NoteList(collections.MutableSequence):
 
   def reset(self):
     del self.list[:]
+    self._mode_counter = dict()
+    self._modes_set = set([UserMode.ALL, UserMode.NOTAG])
 
   def check(self, v):
     if not isinstance(v, self.oktype):
@@ -191,16 +192,32 @@ class NoteList(collections.MutableSequence):
     for v in values:
       self.list.append(v)
       self._modes_set = self._modes_set.union(v.modes)
+      for m in v.modes:
+        if self._mode_counter.has_key(m):
+          self._mode_counter[m] += 1
+        else:
+          self._mode_counter[m] = 1
 
   def insert(self, i, v):
     self.check(v)
     self._modes_set = self._modes_set.union(v.modes)
     self.list.insert(i, v)
+    for m in v.modes:
+      if self._mode_counter.has_key(m):
+        self._mode_counter[m] += 1
+      else:
+        self._mode_counter[m] = 1
 
   def modes(self):
     def comp(a, b):
-      v1 = re.sub(utils.TAG_STARTS_WITH, 'z', a.lower(), 1)
-      v2 = re.sub(utils.TAG_STARTS_WITH, 'z', b.lower(), 1)
+      if a not in UserMode.DEFAULT_MODES:
+        a = 'z %s' % a
+      if b not in UserMode.DEFAULT_MODES:
+        b = 'z %s' % b
+
+      #v2 = re.sub(utils.TAG_STARTS_WITH, 'z', b.lower(), 1)
+      v1 = a.lower()
+      v2 = b.lower()
       return cmp(v1, v2)
     return sorted(list(self._modes_set), cmp=comp)
 
