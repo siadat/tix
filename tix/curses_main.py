@@ -31,7 +31,7 @@ class CursesMain(object):
       Control.reload_thread_lock.acquire()
 
       self.outer.stored_items.load(self.outer.notes_root, self.outer.recursive, redraw)
-      self.outer.stored_items.group_todo()
+      #self.outer.stored_items.group_todo()
       curses_view.complete_redraw(self.outer.stored_items)
 
       Control.reload_thread_lock.release()
@@ -177,10 +177,9 @@ class CursesMain(object):
 
         if SortMode.current == SortMode.BY_DATE:
           self.stored_items.sort_by_modification_date()
-          self.stored_items.group_todo()
+          #self.stored_items.group_todo()
         elif SortMode.current == SortMode.BY_FILENAME:
           self.stored_items.sort_by_filename()
-          #self.stored_items.group_todo()
 
         new_index = 0
         for i, item in enumerate(self.stored_items):
@@ -196,7 +195,7 @@ class CursesMain(object):
         SortMode.current = SortMode.BY_SHUF
         item_id = self.stored_items.get_visible(Control.list_visible_index).id
         random.shuffle(self.stored_items)
-        self.stored_items.group_todo()
+        #self.stored_items.group_todo()
         new_index = 0
         for i, item in enumerate(self.stored_items):
           if item.id == item_id:

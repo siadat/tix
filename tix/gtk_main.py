@@ -15,27 +15,16 @@ class GtkMain:
     self.commandline = gtk.Entry(1024)
     self.commandline.connect('changed', self.keypress_reaction_commandline_changed)
     self.commandline.connect('key-press-event', self.keypress_reaction_commandline_keypressed)
-
+    self.commandline.connect('focus-out-event', self.commandline_focus_out_event)
+    self.commandline.set_editable(1)
     font_desc = pango.FontDescription('monospace')
     self.commandline.modify_font(font_desc)
+    #self.commandline.set_has_frame(False)
     #self.commandline.set_activates_default(True)
 
   def create_editor(self):
     self.editor = Editor()
     self.editor.connect('key-press-event', self.keypress_reaction_editor)
-
-    self.editor.set_pixels_above_lines(2)
-    self.editor.set_pixels_inside_wrap(0)
-    self.editor.set_right_margin(2)
-    self.editor.set_left_margin(2)
-
-    self.editor.set_border_width(10)
-    f = 64 * 1024 - 1
-    color = (f,) * 3
-    self.editor.modify_bg(0, gtk.gdk.Color(*color))
-    #color = map(lambda x: int(x), (f, f * 0.9, f * 0.5))
-    #self.editor.modify_base(0, gtk.gdk.Color(10000,12000,0))
-    #self.editor.modify_text(0, gtk.gdk.Color(*color))
 
   def create_list(self):
     self.tree_view = List(self.stored_items)
@@ -43,7 +32,7 @@ class GtkMain:
     self.tree_view.connect('key-press-event', self.keypress_reaction_list)
 
   def create_statusbar(self):
-    self.status_bar = StatusBar() # gtk.Statusbar()
+    self.status_bar = StatusBar()
     self.status_bar.update("TIX")
     self.vbox.pack_end(self.status_bar, False, False, 0)
     self.status_bar.show()
@@ -51,10 +40,11 @@ class GtkMain:
   def create_window(self):
     self.main_window = gtk.Window(gtk.WINDOW_TOPLEVEL)
     self.main_window.set_title("Tix")
-    self.main_window.set_default_size(int(500 * 1.), int(400 * 1.))
+    self.main_window.set_default_size(int(500 * 1.1), int(400 * 1.1))
+    self.main_window.set_border_width(10)
+    self.main_window.fullscreen()
     self.main_window.connect("delete-event", self.delete_event)
     self.main_window.connect("destroy", self.event_destroy, None)
-    self.main_window.set_border_width(10)
     
     self.vbox = gtk.VBox(False, 1)
     self.main_window.add(self.vbox)
@@ -68,6 +58,9 @@ class GtkMain:
   #  return toolbar
 
   # {{{ Events
+  def commandline_focus_out_event(self, widget, event, data=None):
+    self.commandline.set_text("")
+
   def event_select_prev(self, widget, event, data=None):
     if TixMode.current == TixMode.LIST:
       path, col = self.tree_view.get_cursor()
@@ -155,11 +148,70 @@ class GtkMain:
       self.main_window.show_all()
   
   def event_execute_command(self, widget, event, data=None):
-    regex = self.commandline.get_text()[1:]
+    regex = self.commandline.get_text()
+    if len(regex) > 0:
+      # Notice we're not striping '#'
+      if regex[0] in ('/', '?'): regex = regex[1:]
     #if regex.strip(): 
     Control.regex_patterns.append(regex)
+    Control.current_regex_index = len(Control.regex_patterns)
+    nbr_visible = self.stored_items.filter()
+    if nbr_visible == 1:
+      curr_note = self.stored_items.get_visible(0)
+      self.show_note_in_edit_mode(curr_note)
+    else:
+      # repopulate tree_view:
+      self.vbox.remove(self.tree_view.get_parent())
+      self.create_list()
+
+      Control.reload_notes = False
+      self.event_switch_to_list_view(None, None)
+
+      self.tree_view.grab_focus()
+
+  def event_check_commandline_text(self, widget, data=None):
+    if self.commandline.get_text_length() == 0:
+      self.event_focus_list(None, None)
+
+  def event_commandline_home(self, widget, event, data=None):
+    l = self.commandline.get_text_length()
+    if l > 0:
+      self.commandline.set_position(1)
+      widget.emit_stop_by_name("key-press-event")
+
+  def event_next_search_regex(self, widget, event, data=None):
+    # FIXME focus is grabbed by tree_view
+    if Control.current_regex_index < len(Control.regex_patterns) - 1:
+      Control.current_regex_index += 1
+      self.commandline.set_text("/%s" % Control.regex_patterns[Control.current_regex_index])
+      l = self.commandline.get_text_length()
+      self.commandline.set_position(l)
+    elif Control.current_regex_index == len(Control.regex_patterns) - 1:
+      Control.current_regex_index += 1
+      self.commandline.set_text("/")
+      l = self.commandline.get_text_length()
+      self.commandline.set_position(l)
+
+    return True
+    #widget.emit_stop_by_name("key-press-event")
+
+  def event_prev_search_regex(self, widget, event, data=None):
+    # FIXME focus is grabbed by tree_view
+    widget.emit_stop_by_name("key-press-event")
+    if Control.current_regex_index > 0:
+      Control.current_regex_index -= 1
+      self.commandline.set_text("/%s" % Control.regex_patterns[Control.current_regex_index])
+      l = self.commandline.get_text_length()
+      self.commandline.set_position(l)
+    return True
+    #self.commandline.emit_stop_by_name("key-press-event")
+    #widget.stop_emission("key-press-event")
+
+  def event_reset_search(self, widget, event, data=None):
+    Control.regex_patterns.append("")
+
+    # see also: event_execute_command
     self.stored_items.filter()
-    
     # repopulate tree_view:
     self.vbox.remove(self.tree_view.get_parent())
     self.create_list()
@@ -167,31 +219,30 @@ class GtkMain:
     Control.reload_notes = False
     self.event_switch_to_list_view(None, None)
 
-    # TODO
     self.commandline.set_text("")
     self.tree_view.grab_focus()
 
-  def event_check_commandline_text(self, widget, event, data=None):
-    if self.commandline.get_text_length() == 0:
-      self.event_focus_list(None, None)
-
   def event_focus_list(self, widget, event, data=None):
-    self.commandline.set_text("")
     self.tree_view.grab_focus()
 
   def event_focus_commandline_search_mode(self, widget, event, data=None):
-    self.commandline.set_text('/')
-
-    self.commandline.grab_focus()
-    l = self.commandline.get_text_length()
-    self.commandline.select_region(l,l)
+    if event.keyval == gtk.keysyms.numbersign \
+    or event.keyval == gtk.keysyms.slash \
+    or (event.keyval == gtk.keysyms.f and event.state == gtk.gdk.CONTROL_MASK):
+      if event.keyval == gtk.keysyms.numbersign:
+        self.commandline.set_text('/#')
+      else:
+        self.commandline.set_text('/')
+      self.commandline.grab_focus()
+      l = self.commandline.get_text_length()
+      self.commandline.set_position(l)
 
   def event_focus_commandline_command_mode(self, widget, event, data=None):
     self.commandline.set_text(':')
 
     self.commandline.grab_focus()
     l = self.commandline.get_text_length()
-    self.commandline.select_region(l,l)
+    self.commandline.set_position(l)
 
   def event_toggle_view(self, widget, event, data=None):
     nbr_modes = len(TixMode.OPTIONS)
@@ -217,14 +268,14 @@ class GtkMain:
 
   def event_switch_to_list_view(self, widget, event, data=None):
     TixMode.current = TixMode.LIST
-    self.status_bar.update(" | Search: %s" % Control.get_last_regex() if Control.get_last_regex() else "")
+    self.status_bar.update("- Search: %s" % Control.get_last_regex() if Control.get_last_regex() else "")
     if Control.reload_notes:
       self.stored_items.load(self.notes_root, self.recursive)
       self.create_list()
       Control.reload_notes = False
     self.vbox.remove(self.editor.get_parent())
+    self.vbox.pack_start(self.commandline, False, False, 0)
     self.vbox.add(self.tree_view.get_parent())
-    self.vbox.pack_end(self.commandline, False, False, 0)
     self.tree_view.grab_focus()
     self.main_window.show_all()
     
@@ -283,10 +334,14 @@ class GtkMain:
     except KeyError:
       pass
 
-  def keypress_reaction_commandline_changed(self, widget, event=None, data=None):
-    self.event_check_commandline_text(widget, event, data)
+  def keypress_reaction_commandline_changed(self, widget, data=None):
+    self.event_check_commandline_text(widget, data)
 
   def keypress_reaction_commandline_keypressed(self, widget, event=None, data=None):
+    #if self.commandline.get_position() < 1:
+    #  l = self.commandline.get_text_length()
+    #  if l > 0:
+    #    self.commandline.set_position(1)
     try:
       f = self.event_dict_commandline[event.keyval]
       f(widget, event, data)
@@ -307,20 +362,25 @@ class GtkMain:
     self.event_dict_commandline = dict({
       gtk.keysyms.Escape: self.event_focus_list,
       gtk.keysyms.Return: self.event_execute_command,
+      gtk.keysyms.Up: self.event_prev_search_regex,
+      gtk.keysyms.Down: self.event_next_search_regex,
+      gtk.keysyms.Home: self.event_commandline_home,
     })
 
     self.event_dict_list = dict({
       # List to commandline
       #gtk.keysyms.colon: self.event_focus_commandline_command_mode,
       gtk.keysyms.slash: self.event_focus_commandline_search_mode,
+      gtk.keysyms.f: self.event_focus_commandline_search_mode,
+      gtk.keysyms.numbersign: self.event_focus_commandline_search_mode,
 
       # List to editor
-      #gtk.keysyms.Escape: self.event_toggle_view,
-      gtk.keysyms.Tab: self.event_toggle_view,
+      gtk.keysyms.Escape: self.event_reset_search,
+      #gtk.keysyms.Tab: self.event_toggle_view,
       gtk.keysyms.a: self.event_add_new_note,
 
       # List
-      gtk.keysyms.q: self.event_destroy,
+      #gtk.keysyms.q: self.event_destroy,
       gtk.keysyms.j: self.event_select_next,
       gtk.keysyms.k: self.event_select_prev,
       gtk.keysyms.G: self.event_select_last,

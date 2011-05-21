@@ -26,14 +26,11 @@ class Note(object):
   def fullpath(self):
     return os.path.join(self.path, self.filename)
 
-  def is_a_match(self, regex, flags = 0):
-    try:
-      if regex.strip() is '': return True
-      regex = regex.replace('#', '\\#')
-      return re.search(regex, self.text,
-          re.MULTILINE | re.DOTALL | re.VERBOSE | flags)
-    except re.error:
-      return True
+  def is_a_match(self, regex, flags=0):
+    return utils.search_regex(regex, self.text, flags)
+    #if regex.strip() is '': return True
+    #return re.search(regex, self.text,
+    #    re.MULTILINE | re.DOTALL | re.VERBOSE | flags)
 
   def process_meta(self, id):
     self.id = id
@@ -80,7 +77,7 @@ class NoteList(collections.MutableSequence):
     self.list = list()
     self.oktype = Note
     self._modes_set = set([UserMode.ALL, UserMode.NOTAG])
-    self._mode_counter = dict()
+    self.modes_frequency = dict()
 
   def load(self, root_dir, recursive, function_while_processing=None): # FIXME root dir? meh.
     from control import Control
@@ -110,7 +107,9 @@ class NoteList(collections.MutableSequence):
         files = os.listdir(file_path)
         self.extend(self.read_notes(file_path, files))
 
-    self.sort_by_modification_date()
+    #self.sort_by_modification_date()
+    #self.sort_by_filename()
+    self.sort_by_tags()
     
     self.filter(function_while_processing)
 
@@ -130,15 +129,18 @@ class NoteList(collections.MutableSequence):
     from control import Control
     list_modes = self.modes()
     current_mode = list_modes[UserMode.current]
+    nbr_visible = 0
     for i, note in enumerate(self.list):
       if not note.is_processed: note.process_meta(i)
       if (current_mode == UserMode.ALL or current_mode in note.modes) \
       and note.is_search_match(Control.get_last_regex()):
         note.visible(True)
+        nbr_visible += 1
       else:
         note.visible(False)
       if function_while_processing and i % 100 == 0:
         function_while_processing()
+    return nbr_visible
 
   def read_notes(self, path, filenames, firstline_only=False):
     notes = NoteList()
@@ -158,17 +160,24 @@ class NoteList(collections.MutableSequence):
 
   def reset(self):
     del self.list[:]
-    self._mode_counter = dict()
+    self.modes_frequency = dict()
     self._modes_set = set([UserMode.ALL, UserMode.NOTAG])
 
   def check(self, v):
     if not isinstance(v, self.oktype):
-      raise TypeError, v
+      raise TypeError(v)
 
   def group_todo(self):
     todo_list = [n for n in self.list if n.is_todo]
     self.list = [n for n in self.list if not n.is_todo]
     self.list = todo_list + self.list
+
+  def sort_by_tags(self):
+    def modes_to_sort_val(note1):
+      modes_1 = self.sorted_item_modes(note1)
+      return (sum([self.modes_frequency[m]>>i for i,m in enumerate(modes_1)]), "".join([repr(self.modes_frequency[m]) for m in modes_1])),
+    self.list = sorted(self.list, key=modes_to_sort_val, reverse=True)
+
 
   def sort_by_modification_date(self):
     self.list = sorted(self.list,
@@ -189,26 +198,32 @@ class NoteList(collections.MutableSequence):
 
   def extend(self, values):
     if not isinstance(values, NoteList):
-      raise TypeError, values
+      raise TypeError(values)
 
     for v in values:
       self.list.append(v)
       self._modes_set = self._modes_set.union(v.modes)
       for m in v.modes:
-        if self._mode_counter.has_key(m):
-          self._mode_counter[m] += 1
+        if self.modes_frequency.has_key(m):
+          self.modes_frequency[m] += 1
         else:
-          self._mode_counter[m] = 1
+          self.modes_frequency[m] = 1
 
   def insert(self, i, v):
     self.check(v)
     self._modes_set = self._modes_set.union(v.modes)
     self.list.insert(i, v)
     for m in v.modes:
-      if self._mode_counter.has_key(m):
-        self._mode_counter[m] += 1
+      if self.modes_frequency.has_key(m):
+        self.modes_frequency[m] += 1
       else:
-        self._mode_counter[m] = 1
+        self.modes_frequency[m] = 1
+
+  def sorted_item_modes(self, item):
+    if not isinstance(item, Note): raise TypeError(item)
+    return sorted(
+        list(item.modes),
+        cmp=lambda a,b: -cmp(self.modes_frequency[a], self.modes_frequency[b]))
 
   def modes(self):
     def comp(a, b):

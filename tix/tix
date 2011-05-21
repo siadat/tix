@@ -34,7 +34,7 @@ def main(argv=None):
   else:
     notes_root = os.curdir
 
-  #- temporary: just check ~/tix/ dir
+  #- XXX temporary: just check ~/tix/ dir
   import tix.utils
   root_dir = os.path.join(tix.utils.HOME_DIR, 'tix')
   #-

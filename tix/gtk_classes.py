@@ -3,6 +3,7 @@ import pango
 from control import Control, UserMode, TixMode
 from note import Note
 from gtk_undobuffer import UndoableBuffer
+import functools
 
 class StatusBar(gtk.Statusbar):
   def __init__(self, *args):
@@ -20,52 +21,42 @@ class List(gtk.TreeView):
     note_items_model = gtk.ListStore(*types)
     all_modes = stored_items.modes()
     #checked_modes = set()
+    todo_marker = "<span weight='bold' background='#709dbf' color='#fff'> ... </span> " #8a5
+
     for i, item in enumerate(stored_items):
       if not item.is_shown: continue
 
-      #modes = " ".join(["<span background='#d0ddef' color='#024'><span color='#8ab'>%s</span>%s </span>" % (m[0], m[1:]) for m in item.modes if m != all_modes[UserMode.current]])
-      modes = " ".join(["<span background='#d0ddef' color='#024'> %s </span>" % m for m in item.modes if m != all_modes[UserMode.current]])
+      item_modes = stored_items.sorted_item_modes(item)
 
-      #new_modes = item.modes.difference(checked_modes)
-      #old_modes = item.modes.intersection(checked_modes)
-      #modes_new = " ".join(["<span background='#d0ddef' color='#024'>%s <span color='#8ab'>%s</span>%s </span>" % (stored_items._mode_counter[m], m[0], m[1:]) for m in new_modes if m != all_modes[UserMode.current]])
-      #modes_old = " ".join(["<span background='#fff' color='#024'>%s <span color='#8ab'>%s</span>%s </span>" % (stored_items._mode_counter[m], m[0], m[1:]) for m in old_modes if m != all_modes[UserMode.current]])
-      #modes = "%s %s" % (modes_new, modes_old)
-      #checked_modes = checked_modes.union(new_modes)
+      import utils
+      modes = ""
+      def f(sofar, m):
+        regex = Control.get_last_regex()
+        if regex and utils.search_regex(regex, m):
+          return "%s<span background='#ee6' color='#000'> %s </span> " % (sofar, m)
+        else:
+          return "%s<span background='#d0ddef' color='#024'> %s </span> " % (sofar, m)
+      modes = functools.reduce(f, item_modes, "")
 
       first_line = item.first_line
-      # eee, 333
-      #bg_color = None # '#ddd' if item.is_todo else None
 
-      #if not modes: modes = "<span color='#999'>None</span>"
       if not first_line:
         first_line = "<span color='#999'>Empty</span>"
       else:
         first_line = "%s" % item.first_line
-        pass
-        #if modes: first_line = ""
-
-      todo_marker = "<span size='smaller' weight='bold' color='#fff' background='#c30'> TODO </span> " #8a5
+      
       if item.is_todo:
         note_items_model.append((
-          '%s%s %s' % (todo_marker, modes, first_line, ),
-          #'%s%s %s' % (todo_marker, first_line, modes),
-          #'%s %s' % (todo_marker, modes),
-          #'%s%s' % (todo_marker, modes),
-          #'%s%s' % ('', first_line),
+          '%s%s %s' % (modes, todo_marker, first_line, ),
         ))
       else:
         note_items_model.append((
           "%s %s" % (modes, first_line, ),
-          #"%s %s" % (first_line, modes, ),
-          #"%s" % (modes, ),
-          #modes, 
-          #first_line,
         ))
     gtk.TreeView.__init__(self, note_items_model)
     
     self.set_cursor(0)
-    self.set_rules_hint(True)
+    self.set_rules_hint(1)
     self.set_enable_search(False)
     self.set_headers_clickable(False)
     self.set_headers_visible(False)
@@ -100,6 +91,22 @@ class Editor(gtk.TextView):
     gtk.TextView.__init__(self, *args)
     self.set_editable(True)
     self.set_wrap_mode(gtk.WRAP_WORD)
+    self.set_pixels_above_lines(2)
+    self.set_pixels_inside_wrap(0)
+    self.set_right_margin(2)
+    self.set_left_margin(2)
+    self.set_border_width(10)
+    f = 64 * 1024 - 1
+    color = (f,) * 3
+    self.modify_bg(0, gtk.gdk.Color(*color))
+    #color = map(lambda x: int(x), (f, f * 0.9, f * 0.5))
+
+    #= dark background:
+    #self.modify_bg(0, gtk.gdk.Color(10000,12000,0))
+    #self.modify_base(0, gtk.gdk.Color(10000,12000,0))
+    #self.modify_text(0, gtk.gdk.Color(*color))
+    #=
+
     self.swindow = create_swindow()
     self.swindow.add(self)
     

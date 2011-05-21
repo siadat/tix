@@ -356,7 +356,7 @@ Quick start:
         list_item_texts.append(TextWithFormat(first_line, flags, self.COLOR_DEFAULT))
       
       if stored_item.is_todo and Control.list_view_mode != Control.LIST_VIEW_FILENAME:
-        list_item_texts.insert(0, TextWithFormat('TODO', flags | curses.A_BOLD, self.COLOR_DEFAULT))
+        list_item_texts.insert(0, TextWithFormat('...', flags | curses.A_BOLD, self.COLOR_DEFAULT))
 
       if i == Control.list_visible_index:
         t = " ".join([ii.str for ii in list_item_texts])

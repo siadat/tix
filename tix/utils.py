@@ -22,11 +22,20 @@ DEFAULT_USER_CONFIGURATIONS = {
   'TIXPATH': os.path.join(HOME_DIR, 'tix'),
   'NOTEPATH': [os.path.join(HOME_DIR, 'tix')],
   'TAG_REGEX': r'[#][^\s;#=\(\)\"]{1,50}',
-  'IMPORTANT_REGEX': r'\b(TODO|DEADLINE)\b',
-  'UNIMPORTANT_REGEX': r'\b(NOTODO|NODEADLINE)\b',
+  'IMPORTANT_REGEX': r'\b(TODO|TOWORK|CONTINUE|DEADLINE)\b',
+  'UNIMPORTANT_REGEX': r'\b(NOTODO|NOTOWORK|NOCONTINUE|NODEADLINE)\b',
 }
 
 user_configurations = DEFAULT_USER_CONFIGURATIONS
+
+def search_regex(regex, text, flags=0):
+  if not regex.strip(): return True
+  regex = regex.replace('#', '\\#')
+  try:
+    return re.search(regex, text,
+        re.MULTILINE | re.DOTALL | re.VERBOSE | flags)
+  except re.error:
+    return True
 
 def open_file_in_editor(file_name):
   """ start editor with file_name """
