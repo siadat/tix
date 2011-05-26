@@ -42,7 +42,7 @@ class GtkMain:
     self.main_window.set_title("Tix")
     self.main_window.set_default_size(int(500 * 1.1), int(400 * 1.1))
     self.main_window.set_border_width(10)
-    self.main_window.fullscreen()
+    #self.main_window.fullscreen()
     self.main_window.connect("delete-event", self.delete_event)
     self.main_window.connect("destroy", self.event_destroy, None)
     
@@ -154,6 +154,7 @@ class GtkMain:
       if regex[0] in ('/', '?'): regex = regex[1:]
     #if regex.strip(): 
     Control.regex_patterns.append(regex)
+    utils.append_line_to_history("/" + regex)
     Control.current_regex_index = len(Control.regex_patterns)
     nbr_visible = self.stored_items.filter()
     if nbr_visible == 1:
@@ -278,26 +279,29 @@ class GtkMain:
     self.vbox.add(self.tree_view.get_parent())
     self.tree_view.grab_focus()
     self.main_window.show_all()
-    
 
   def event_delete_note(self, widget, event, data=None):
-    if self.editor.delete_current_file():
-      Control.reload_notes = True
-      self.event_switch_to_list_view(None, None)
+    if event.state == 0: # no gtk.gdk.CONTROL_MASK or MOD1_MASK
+      if self.editor.delete_current_file():
+        Control.reload_notes = True
+        self.event_switch_to_list_view(None, None)
 
   def event_destroy(self, widget, event, data=None):
-    if TixMode.current == TixMode.LIST:
-      gtk.main_quit()
-    else:
-      self.event_switch_to_list_view(None, None)
+    gtk.main_quit()
+    #if TixMode.current == TixMode.LIST:
+    #  gtk.main_quit()
+    #else:
+    #  self.event_switch_to_list_view(None, None)
 
   def delete_event(self, widget, event, data=None):
-    if TixMode.current == TixMode.LIST:
-      gtk.main_quit()
-      return False
-    else:
-      self.event_switch_to_list_view(None, None)
-      return True
+    gtk.main_quit()
+    return False
+    #if TixMode.current == TixMode.LIST:
+    #  gtk.main_quit()
+    #  return False
+    #else:
+    #  self.event_switch_to_list_view(None, None)
+    #  return True
 
   def event_insert_date(self, widget, event, data=None):
     if TixMode.current == TixMode.EDIT:
@@ -356,6 +360,7 @@ class GtkMain:
       pass
 
   def __init__(self):
+    Control.regex_patterns = utils.load_search_history()
     utils.get_user_config()
     self.stored_items = NoteList()
 
@@ -395,7 +400,7 @@ class GtkMain:
     })
 
     self.event_dict_editor = dict({
-      gtk.keysyms.Escape: self.event_destroy,
+      gtk.keysyms.Escape: self.event_switch_to_list_view,
       gtk.keysyms.z: self.event_undo,
       gtk.keysyms.r: self.event_redo,
       gtk.keysyms.s: self.event_save,

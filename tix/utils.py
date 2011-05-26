@@ -28,6 +28,21 @@ DEFAULT_USER_CONFIGURATIONS = {
 
 user_configurations = DEFAULT_USER_CONFIGURATIONS
 
+def load_search_history():
+  history_path = os.path.join(user_configurations['TIXPATH'], 'tix.history')
+  regex_patterns = list()
+  for line in open(history_path, 'r'):
+    line = line.strip()
+    if line and line[0] in ('/', '?'):
+      line = line[1:]
+      regex_patterns.append(line)
+  return regex_patterns
+
+def append_line_to_history(string):
+  history_path = os.path.join(user_configurations['TIXPATH'], 'tix.history')
+  with open(history_path, 'a') as f:
+    f.write(string + "\n")
+
 def search_regex(regex, text, flags=0):
   if not regex.strip(): return True
   regex = regex.replace('#', '\\#')
