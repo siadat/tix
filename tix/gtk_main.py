@@ -360,8 +360,8 @@ class GtkMain:
       pass
 
   def __init__(self):
-    Control.regex_patterns = utils.load_search_history()
     utils.get_user_config()
+    Control.regex_patterns = utils.load_search_history()
     self.stored_items = NoteList()
 
     self.event_dict_commandline = dict({

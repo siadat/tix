@@ -39,8 +39,8 @@ class CursesMain(object):
   @classmethod
   def main(self, stdscr, notes_root, recursive):
 
-    Control.regex_patterns = utils.load_search_history()
     utils.get_user_config()
+    Control.regex_patterns = utils.load_search_history()
 
     if not os.path.exists(notes_root):
       curses_view.end_curses()

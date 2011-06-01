@@ -31,6 +31,8 @@ user_configurations = DEFAULT_USER_CONFIGURATIONS
 def load_search_history():
   history_path = os.path.join(user_configurations['TIXPATH'], 'tix.history')
   regex_patterns = list()
+  if not os.path.exists(history_path):
+    return regex_patterns
   for line in open(history_path, 'r'):
     line = line.strip()
     if line and line[0] in ('/', '?'):
