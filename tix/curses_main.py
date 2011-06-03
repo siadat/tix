@@ -12,7 +12,7 @@ import curses.textpad
 import threading
 
 from curses_view import CursesView
-from control import Control, TixMode, UserMode, SortMode
+from control import Control, TixMode, UserMode, SortMode, History
 from note import NoteList
 
 curses_view = CursesView()
@@ -40,7 +40,8 @@ class CursesMain(object):
   def main(self, stdscr, notes_root, recursive):
 
     utils.get_user_config()
-    Control.regex_patterns = utils.load_search_history()
+    Control.regex_patterns = History.load_history_from_file(utils.get_search_history_path())
+    Control.file_history = History.load_history_from_file(utils.get_file_history_path())
 
     if not os.path.exists(notes_root):
       curses_view.end_curses()
@@ -267,6 +268,9 @@ class CursesMain(object):
         if note_before.text != note_after.text:
           Control.reload_notes = True
           Control.list_visible_index = 0
+          h = History(note_after.fullpath())
+          Control.file_history.append(h)
+          h.append_to_file(utils.get_file_history_path())
         else:
           Control.reload_notes = False
       elif TixMode.current == TixMode.TAGS:
@@ -333,11 +337,11 @@ class CursesMain(object):
             if c == curses.KEY_UP and Control.current_regex_index > 0:
               Control.current_regex_index -= 1
               curses_view.footer_pad.clear()
-              CursesView.add_str(curses_view.footer_pad, curses_view.search_prompt + Control.regex_patterns[Control.current_regex_index])
+              CursesView.add_str(curses_view.footer_pad, Control.regex_patterns[Control.current_regex_index].value)
             elif c == curses.KEY_DOWN and Control.current_regex_index < len(Control.regex_patterns) - 1:
               Control.current_regex_index += 1
               curses_view.footer_pad.clear()
-              CursesView.add_str(curses_view.footer_pad, curses_view.search_prompt + Control.regex_patterns[Control.current_regex_index])
+              CursesView.add_str(curses_view.footer_pad, Control.regex_patterns[Control.current_regex_index].value)
             elif c == curses.KEY_DOWN and Control.current_regex_index == len(Control.regex_patterns) - 1:
               Control.current_regex_index += 1
               curses_view.footer_pad.clear()
@@ -363,14 +367,17 @@ class CursesMain(object):
           pass
         if regex != None:
           regex = regex[len(curses_view.search_prompt):]
-          if regex.strip(): Control.regex_patterns.append(regex)
+          if regex.strip():
+            h = History(curses_view.search_prompt + regex)
+            h.append_to_file(utils.get_search_history_path())
+            Control.regex_patterns.append(h)
           Control.list_visible_index = 0
           curses_view.adjust_scroll(len(self.stored_items))
 
           list_modes = self.stored_items.modes()
           current_mode = list_modes[UserMode.current]
-          for note in self.stored_items:
 
+          for note in self.stored_items:
             if note.is_search_match(regex):
               if (current_mode == UserMode.ALL or current_mode in note.modes):
                 note.visible(True)

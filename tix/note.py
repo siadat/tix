@@ -1,7 +1,8 @@
+import collections
 import os
 import re
+
 import utils
-import collections
 from control import UserMode
 
 class Note(object):
@@ -110,6 +111,7 @@ class NoteList(collections.MutableSequence):
     #self.sort_by_modification_date()
     #self.sort_by_filename()
     self.sort_by_tags()
+    self.sort_by_file_history_first()
     
     self.filter(function_while_processing)
 
@@ -130,6 +132,7 @@ class NoteList(collections.MutableSequence):
     list_modes = self.modes()
     current_mode = list_modes[UserMode.current]
     nbr_visible = 0
+
     for i, note in enumerate(self.list):
       if not note.is_processed: note.process_meta(i)
       if (current_mode == UserMode.ALL or current_mode in note.modes) \
@@ -172,9 +175,22 @@ class NoteList(collections.MutableSequence):
     self.list = [n for n in self.list if not n.is_todo]
     self.list = todo_list + self.list
 
+  def sort_by_file_history_first(self):
+    from control import Control
+    import sys
+    filenames_in_history = map(lambda x: x.value, Control.file_history)
+    filenames_in_history.reverse()
+    def order_by_history(note):
+      try:
+        return filenames_in_history.index(note.fullpath())
+      except ValueError as e:
+        return sys.maxsize
+    self.list = sorted(self.list, key=order_by_history, reverse=False)
+
+
   def sort_by_tags(self):
-    def modes_to_sort_val(note1):
-      modes_1 = self.sorted_item_modes(note1)
+    def modes_to_sort_val(note):
+      modes_1 = self.sorted_item_modes(note)
       return (sum([self.modes_frequency[m]>>i for i,m in enumerate(modes_1)]), "".join([repr(self.modes_frequency[m]) for m in modes_1])),
     self.list = sorted(self.list, key=modes_to_sort_val, reverse=True)
 

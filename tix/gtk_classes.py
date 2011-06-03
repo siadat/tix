@@ -1,9 +1,10 @@
+import functools
 import gtk
 import pango
+
 from control import Control, UserMode, TixMode
 from note import Note
 from gtk_undobuffer import UndoableBuffer
-import functools
 
 class StatusBar(gtk.Statusbar):
   def __init__(self, *args):

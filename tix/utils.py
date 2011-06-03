@@ -1,10 +1,10 @@
+import ConfigParser
+import datetime
 import os
 import re
-import time
-import datetime
-import textwrap
 import subprocess
-import ConfigParser
+import textwrap
+import time
 from note import Note
 
 #TODO_REGEX = r'\b(TODO|DEADLINE)\b'
@@ -15,6 +15,8 @@ from note import Note
 FILENAME_WHITELIST_REGEX = r'.*(txt|md|markdown)$'
 
 HOME_DIR = os.getenv('USERPROFILE') or os.getenv('HOME')
+
+#timestamp_regex = re.compile(r'[^ ]*')
 
 DEFAULT_USER_CONFIGURATIONS = {
   'EDITOR': 'vi',
@@ -28,22 +30,10 @@ DEFAULT_USER_CONFIGURATIONS = {
 
 user_configurations = DEFAULT_USER_CONFIGURATIONS
 
-def load_search_history():
-  history_path = os.path.join(user_configurations['TIXPATH'], 'tix.history')
-  regex_patterns = list()
-  if not os.path.exists(history_path):
-    return regex_patterns
-  for line in open(history_path, 'r'):
-    line = line.strip()
-    if line and line[0] in ('/', '?'):
-      line = line[1:]
-      regex_patterns.append(line)
-  return regex_patterns
-
-def append_line_to_history(string):
-  history_path = os.path.join(user_configurations['TIXPATH'], 'tix.history')
-  with open(history_path, 'a') as f:
-    f.write(string + "\n")
+def get_search_history_path():
+  return os.path.join(user_configurations['TIXPATH'], 'tix.search.history')
+def get_file_history_path():
+  return os.path.join(user_configurations['TIXPATH'], 'tix.file.history')
 
 def search_regex(regex, text, flags=0):
   if not regex.strip(): return True
@@ -68,8 +58,6 @@ def open_file_in_editor(file_name):
     fulltext = ""
     with open(file_name, 'r') as f:
       fulltext = f.read()
-    #gui = GtkMain()
-    #gui.show_text_editor(fulltext)
 
 def open_file_in_reader(file_name):
   """ start reader with file_name """
@@ -129,12 +117,12 @@ def get_number_of_lines(text, note_width):
   return number_of_lines
 
 def get_user_config():
+  global user_configurations
   config_path = os.path.join(user_configurations['TIXPATH'], 'tix.cfg')
   config_parser = ConfigParser.ConfigParser()
 
   if os.path.exists(config_path):
     config_parser.read(config_path)
-    global user_configurations
 
     try:
       user_configurations['EDITOR'] = config_parser.get('general', 'editor')
@@ -198,7 +186,7 @@ def get_first_line(string):
   first_line = os.linesep.join(lines)
   first_line = re.sub(r'[\t ]+', ' ', first_line)
   first_line = re.sub(r'[\n\r].*', '', first_line)
-  
+
   return first_line
 
 def log(message):

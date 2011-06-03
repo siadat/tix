@@ -3,12 +3,12 @@
 
 import gtk
 import pango
-
 import sys
+
 import utils
 from note import Note, NoteList
 from gtk_classes import List, Editor, StatusBar
-from control import Control, UserMode, TixMode
+from control import Control, UserMode, TixMode, History
 
 class GtkMain:
   def create_commandline(self):
@@ -153,8 +153,10 @@ class GtkMain:
       # Notice we're not striping '#'
       if regex[0] in ('/', '?'): regex = regex[1:]
     #if regex.strip(): 
-    Control.regex_patterns.append(regex)
-    utils.append_line_to_history("/" + regex)
+    h = History("/" + regex)
+    h.append_to_file(utils.get_search_history_path())
+    Control.regex_patterns.append(h)
+
     Control.current_regex_index = len(Control.regex_patterns)
     nbr_visible = self.stored_items.filter()
     if nbr_visible == 1:
@@ -184,7 +186,7 @@ class GtkMain:
     # FIXME focus is grabbed by tree_view
     if Control.current_regex_index < len(Control.regex_patterns) - 1:
       Control.current_regex_index += 1
-      self.commandline.set_text("/%s" % Control.regex_patterns[Control.current_regex_index])
+      self.commandline.set_text(Control.regex_patterns[Control.current_regex_index].value)
       l = self.commandline.get_text_length()
       self.commandline.set_position(l)
     elif Control.current_regex_index == len(Control.regex_patterns) - 1:
@@ -201,7 +203,7 @@ class GtkMain:
     widget.emit_stop_by_name("key-press-event")
     if Control.current_regex_index > 0:
       Control.current_regex_index -= 1
-      self.commandline.set_text("/%s" % Control.regex_patterns[Control.current_regex_index])
+      self.commandline.set_text(Control.regex_patterns[Control.current_regex_index].value)
       l = self.commandline.get_text_length()
       self.commandline.set_position(l)
     return True
@@ -209,7 +211,7 @@ class GtkMain:
     #widget.stop_emission("key-press-event")
 
   def event_reset_search(self, widget, event, data=None):
-    Control.regex_patterns.append("")
+    Control.regex_patterns.append(History("/"))
 
     # see also: event_execute_command
     self.stored_items.filter()
@@ -315,6 +317,10 @@ class GtkMain:
         n = self.editor.save()
         self.status_bar.update('"%s"' % n.fullpath())
 
+        h = History(n.fullpath())
+        Control.file_history.append(h)
+        h.append_to_file(utils.get_file_history_path())
+
   #def event_bold(self, widget, event, data=None):
   #  if TixMode.current == TixMode.EDIT:
   #    if event.state == gtk.gdk.CONTROL_MASK:
@@ -361,7 +367,8 @@ class GtkMain:
 
   def __init__(self):
     utils.get_user_config()
-    Control.regex_patterns = utils.load_search_history()
+    Control.regex_patterns = History.load_history_from_file(utils.get_search_history_path())
+    Control.file_history = History.load_history_from_file(utils.get_file_history_path())
     self.stored_items = NoteList()
 
     self.event_dict_commandline = dict({
