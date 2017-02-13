@@ -1,4 +1,5 @@
-`tix` is a personal task ant notes manager. `tix` is a Shell tool on Linux for storing notes, personal tasks. It has a GUI and a text-based environment.
+`tix` is a personal task and note manager. `tix` is a Shell tool on Linux for storing notes, personal tasks. It has a GUI (based on gtk) and a text-based environment (based on `curses`).
+
 ## installation
 ```
 git clone git://github.com/sinas/tix.git
@@ -14,6 +15,7 @@ tix
 optional step:
 #edit the file  ~/tix/tix.cfg to change the default editor
 
+## Using tix
 some useful keys in tix editor environment:
 *  <q> to quit
 *  <a> to add a note
@@ -30,4 +32,6 @@ pressing <tab> will show all #tags.
 Special tags:
 The notes containing the word "TODO" are group on top of the list to look like unread emails.
 
+## details
 The content is saved in folder: `~/tix/`
+
