@@ -12,8 +12,8 @@ tix -g
 tix
 ```
 
-optional step:
-#edit the file  ~/tix/tix.cfg to change the default editor
+### optional step:
+edit the file  ~/tix/tix.cfg to change the default editor
 
 ## Using tix
 some useful keys in tix editor environment:
