@@ -16,12 +16,12 @@ tix
 edit the file  ~/tix/tix.cfg to change the default editor
 
 ## Using tix
-some useful keys in tix editor environment:
-*  <q> to quit
-*  <a> to add a note
-*  <ENTER> to edit a note
-*  </> to start searching
-*  <TAB> list of #hash-tags
+Some useful keys in tix editor environment:
+*  `q` to quit
+*  `a` to add a note
+*  `ENTER` to edit a note
+*  `/` to start searching
+*  `TAB` list of #hash-tags
 
 The environment shows a list of items, which are tasks or notes.
 
